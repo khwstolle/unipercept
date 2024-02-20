@@ -1,0 +1,11 @@
+models
+configs
+output
+sources/*.egg-info
+docs
+dist
+.git
+.vscode
+.pytest_cache
+.github
+__pycache__
