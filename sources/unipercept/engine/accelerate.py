@@ -5,8 +5,8 @@ Integration with the ``accelerate`` package.
 import typing as T
 
 import accelerate
-import laco
 import accelerate.utils
+import laco
 import torch
 import torch._dynamo
 import torch._dynamo.config

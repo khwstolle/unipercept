@@ -11,7 +11,6 @@ import os.path
 import shutil
 import tempfile
 import typing as T
-from importlib.abc import Traversable
 from pathlib import Path as _PathlibPath
 from urllib.parse import urlparse
 

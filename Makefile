@@ -21,7 +21,7 @@ install:
 check:
 	uv run ruff check --fix .
 
-test: check
+test: 
 	uv run pytest -s -v -n auto --dist=loadfile --junitxml=tests.xml --no-cov --benchmark-disable
 	
 benchmark:
@@ -30,7 +30,7 @@ benchmark:
 coverage:
 	uv run pytest --cov=sources --cov-report=html --cov-report=xml --benchmark-disable
 
-build: test
+build: 
 	python -m build --wheel
 
 compile:

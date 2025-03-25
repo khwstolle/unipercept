@@ -32,9 +32,9 @@ from torch import nn
 from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils._pytree import tree_map_only
+import laco
 
 from unipercept import file_io
-from unipercept.config.lazy import KEY_NAME
 from unipercept.data import DataLoaderFactory
 from unipercept.engine._params import (
     EngineParams,
@@ -273,7 +273,7 @@ class Engine:
     @property
     def config_name(self) -> str:
         try:
-            return self.config.get(KEY_NAME, "unnamed")
+            return self.config.get(laco.keys.CONFIG_NAME, "unnamed")
         except FileNotFoundError:
             return "unnamed"
 
@@ -283,7 +283,6 @@ class Engine:
         Attempt to locate the configuration YAML file for the current project.
         If that does not exist, return None. If it does exist, return the configuration object.
         """
-        from unipercept.config.lazy import load_config_local
 
         if self._config is not None:
             return self._config
@@ -296,7 +295,7 @@ class Engine:
         logger.info("Loading configuration from %s", path)
 
         try:
-            lazy = load_config_local(str(path))
+            lazy = laco.load_config_local(str(path))
         except Exception as e:  # noqa: PIE786
             msg = f"Could not load configuration from {path!r} {e}"
             logger.warning(msg)
@@ -311,15 +310,13 @@ class Engine:
 
     @config.setter
     def config(self, value: DictConfig) -> None:
-        from unipercept.config.lazy import save_config
-
         if check_main_process():
             path = self.config_path
             if path.exists():
                 msg = f"Configuration file already exists at {path}"
                 raise FileExistsError(msg)
             logger.info("Saving configuration to %s", path)
-            save_config(value, str(path))
+            laco.save_config(value, str(path))
         self._config = None  # NOTE: loaded ad-hoc
 
     @property

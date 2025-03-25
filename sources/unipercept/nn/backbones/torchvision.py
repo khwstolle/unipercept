@@ -1,13 +1,14 @@
 """Implements a feature extraction backbone using Torchvision."""
 
 from __future__ import annotations
-import laco
+
 import difflib
 import typing as T
 import warnings
 from collections import OrderedDict
 from typing import override
 
+import laco
 import regex as re
 import torch
 import torchvision.models

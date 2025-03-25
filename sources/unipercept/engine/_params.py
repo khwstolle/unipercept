@@ -11,9 +11,9 @@ import enum as E
 import logging
 import typing as T
 
+import laco
 import regex as re
 import torch.compiler
-import laco
 
 from unipercept.data._loader import DataLoaderFactory
 from unipercept.engine.debug import DebugMode

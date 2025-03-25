@@ -6,10 +6,9 @@ UniPercept: A framework for computer vision research based on PyTorch.
 
 """
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 from unipercept import (
-    config,
     data,
     engine,
     file_io,

@@ -47,7 +47,6 @@ dependencies = [
     "matplotlib",
     "tabulate",
     "termcolor",
-    "pycocotools",
     "ftfy",
     "wandb",
     "libsixel-python",

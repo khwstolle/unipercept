@@ -11,6 +11,7 @@ import enum as E
 import functools
 import typing as T
 
+import laco
 import typing_extensions as TX
 import wandb
 import wandb.errors
@@ -18,7 +19,6 @@ from accelerate.tracking import WandBTracker as WandBTrackerBase
 from torch import nn
 
 from unipercept import file_io
-import laco
 from unipercept.engine import EngineParams
 from unipercept.engine.callbacks import CallbackDispatcher, Signal, State
 from unipercept.log import get_logger

@@ -13,10 +13,10 @@ import importlib
 import shutil
 import subprocess
 import tempfile
-import laco
 import typing as T
 import warnings
 
+import laco
 import matplotlib.pyplot as plt
 import PIL.Image as pil_image
 

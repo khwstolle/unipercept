@@ -12,6 +12,7 @@ import typing as T
 import warnings
 from typing import override
 
+import laco
 import torch
 import torch.distributed as dist
 from torch import nn
@@ -22,7 +23,7 @@ from torch.utils.data import (
     Sampler,
     get_worker_info,
 )
-import laco
+
 from unipercept.data.sets import PerceptionDataqueue, PerceptionDataset, QueueGenerator
 from unipercept.data.transforms import apply_dataset
 from unipercept.log import create_table, get_logger

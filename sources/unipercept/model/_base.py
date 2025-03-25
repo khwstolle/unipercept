@@ -10,7 +10,7 @@ import torch
 from tensordict import LazyStackedTensorDict, TensorDictBase
 from torch import Tensor, nn
 
-from unipercept.config.lazy import apply_overrides, instantiate
+from laco import apply_overrides, instantiate
 from unipercept.log import logger
 from unipercept.types import Device, Pathable
 

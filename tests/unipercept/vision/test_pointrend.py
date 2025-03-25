@@ -3,7 +3,6 @@ import torch
 from unipercept.vision import pointrend
 
 
-
 def test_sample():
     src = torch.arange(4).view(1, 1, 2, 2).float()
     points = torch.tensor([[0.25, 0.25], [0.75, 0.75]]).unsqueeze(0).float()
@@ -77,7 +76,7 @@ def test_random_points_with_importance():
 
 @pytest.mark.parametrize("use_batch", [False, True])
 @pytest.mark.parametrize("mode", ["linear", "quantile"])
-def test_pointrend.bins_by_values(use_batch, mode):
+def test_pointrend_bins_by_values(use_batch, mode):
     n_bins = 10
     n_values = 30
     n_batch = 4
