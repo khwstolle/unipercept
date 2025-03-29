@@ -14,9 +14,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, override
 
+import expath
 import typing_extensions as TX
 
-from unipercept import file_io
 from unipercept.utils.formatter import formatter
 
 from . import (
@@ -343,7 +343,7 @@ class CityscapesDataset(
 
     split: Literal["train", "val", "test"] = D.field(metadata={"help": "Dataset split"})
     root: str = D.field(
-        default="//datasets/cityscapes", metadata={"help": "Root directory"}
+        default="//unipercept/datasets/cityscapes", metadata={"help": "Root directory"}
     )
 
     @classmethod
@@ -376,7 +376,7 @@ class CityscapesDataset(
 
     def _get_id2sources(self) -> Mapping[FileID, CaptureSources]:
         sources_map: dict[FileID, CaptureSources] = {}
-        dataset_path = file_io.Path(self.path_image)
+        dataset_path = expath.locate(self.path_image)
 
         # Create mapping of ID -> dt.CaptureSources
         for file_id, file_path in map(
@@ -395,13 +395,13 @@ class CityscapesDataset(
             raise RuntimeError(msg)
 
         sources_dict = {}
-        if file_io.isdir(self.path_panoptic):
+        if expath.isdir(self.path_panoptic):
             sources_dict["panoptic"] = list(
-                map(str, file_io.Path(self.path_panoptic).glob("**/*.png"))
+                map(str, expath.locate(self.path_panoptic).glob("**/*.png"))
             )
-        if file_io.isdir(self.path_depth):
+        if expath.isdir(self.path_depth):
             sources_dict["depth"] = list(
-                map(str, file_io.Path(self.path_depth).glob("**/*.png"))
+                map(str, expath.locate(self.path_depth).glob("**/*.png"))
             )
 
         for source_key, files in sources_dict.items():
@@ -524,7 +524,7 @@ class CityscapesVPSDataset(
     """
 
     split: Literal["train", "val", "test"]
-    root: str = "//datasets/cityscapes-vps"
+    root: str = "//unipercept/datasets/cityscapes-vps"
     all: bool = False
 
     @classmethod
@@ -588,7 +588,7 @@ class CityscapesDVPSDataset(
 
     split: Literal["train", "val"] = D.field(metadata={"help": "Dataset split"})
     root: str = D.field(
-        default="//datasets/cityscapes-dvps", metadata={"help": "Root directory"}
+        default="//unipercept/datasets/cityscapes-dvps", metadata={"help": "Root directory"}
     )
 
     @classmethod
@@ -612,7 +612,7 @@ class CityscapesDVPSDataset(
 
     @override
     def _build_manifest(self) -> Manifest:
-        root = file_io.Path(self.path_split)
+        root = expath.locate(self.path_split)
 
         seq_sources: dict[str, dict[str, CaptureSources]] = {}
         seq_origins: dict[str, dict[str, tuple[str, str, str]]] = {}

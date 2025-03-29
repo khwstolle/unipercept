@@ -28,7 +28,7 @@ import torch
 from tabulate import tabulate_formats
 from tqdm import tqdm
 
-from unipercept import file_io, render
+import expath, render
 from unipercept.cli._command import command, logger
 from unipercept.data.sets import PerceptionDataset, catalog
 from unipercept.data.sets._metadata import Metadata
@@ -54,7 +54,7 @@ def _default_args(prs: argparse.ArgumentParser):
         "--inference", "-I", action="store_true", help="export inference", default=True
     )
 
-    prs.add_argument("--output", "-o", type=file_io.Path, help="output file (dry run if not set)")
+    prs.add_argument("--output", "-o", type=expath.locate, help="output file (dry run if not set)")
 
 def _load_model(args) -> torch.nn.Module:
     if args.output is None:

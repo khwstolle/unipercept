@@ -4,8 +4,6 @@ Seed utilities for reproducible behavior during training.
 Based on PyTorch Lightning.
 """
 
-from __future__ import annotations
-
 import os
 import random
 import warnings

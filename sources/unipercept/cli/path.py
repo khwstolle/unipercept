@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import argparse
 
-from unipercept import file_io
+import expath
 
 from ._command import command
 
@@ -20,7 +20,7 @@ def path(prs: argparse.ArgumentParser):
 
     def main(args):
         for p in args.path:
-            print(str(file_io.Path(p)))
+            print(str(expath.locate(p)))
 
     return main
 

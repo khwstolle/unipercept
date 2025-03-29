@@ -1,8 +1,5 @@
-"""
-This package reverts our FPN structure to the old FPN implementation defined in Torchvision.
-
-The original implementation can be found here:
-    https://pytorch.org/vision/stable/_modules/torchvision/ops/feature_pyramid_network.html
+r"""
+Implements a torchvision-style FPN network.
 """
 
 import math
@@ -11,7 +8,6 @@ from collections import OrderedDict
 
 import torch
 import torch.nn.functional as F
-from fvcore.nn.weight_init import c2_xavier_fill
 from torch import nn
 
 from unipercept.nn import init as weight
@@ -22,6 +18,7 @@ from unipercept.nn.backbones._base import (
     BackboneFeatureInfo,
     BackboneFeatures,
 )
+from unipercept.nn.init import c2_xavier_fill
 from unipercept.nn.layers import conv
 from unipercept.nn.layers.squeeze_excite import SqueezeExcite2d
 from unipercept.nn.wrappers import freeze_parameters
@@ -36,10 +33,10 @@ class ExtraFPNBlock(nn.Module):
 
     Parameters
     ----------
-        results
-            the result of the FPN
-        x
-            the original feature maps
+    results
+        the result of the FPN
+    x
+        the original feature maps
 
     Returns
     -------

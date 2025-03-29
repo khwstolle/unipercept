@@ -7,7 +7,6 @@ import typing as T
 from types import EllipsisType
 
 import torch
-
 from unipercept.types import Tensor
 
 

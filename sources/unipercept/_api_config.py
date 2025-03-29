@@ -9,6 +9,7 @@ import os
 import re
 import typing as T
 
+import laco
 import numpy as np
 import torch
 import torch.utils.data
@@ -51,6 +52,8 @@ def __dir__() -> list[str]:
     return __all__
 
 
+KEY_WEIGHTS = "WEIGHTS"
+
 ##########################
 # SUPPORT FOR W&B REMOTE #
 ##########################
@@ -60,7 +63,7 @@ def _read_model_wandb(path: str) -> str:
     """
     Read a model from W7B. Prefix wandb-run://entity/project/name
     """
-    from unipercept import file_io
+    import expath
 
     run = _wandb_read_run(path)
     import wandb
@@ -79,7 +82,7 @@ def _read_model_wandb(path: str) -> str:
     )
 
     logger.info("Downloading model artifact %s", model_artifact_name)
-    return file_io.get_local_path(f"wandb-artifact://{model_artifact_name}")
+    return expath.locate(f"wandb-artifact://{model_artifact_name}")
 
 
 ##########################
@@ -107,11 +110,11 @@ def read_run(
     model_factory
         The model factory object.
     """
-    from unipercept import file_io
+    import expath
 
-    if file_io.isdir(path):
-        path = file_io.join(path, "config.yaml")
-        if not file_io.isfile(path):
+    if expath.isdir(path):
+        path = expath.join(path, "config.yaml")
+        if not expath.isfile(path):
             raise FileNotFoundError(f"Could not find configuration file at {path}")
     config = read_config(path)
     engine = create_engine(config)
@@ -135,17 +138,13 @@ def read_config(config: ConfigParam) -> DictConfig:
     config
         A DictConfig object.
     """
-    from unipercept import file_io
-    from unipercept.config.lazy import (
-        KEY_WEIGHTS,
-        load_config_local,
-        load_config_remote,
-    )
+    import expath
+
     from unipercept.engine._engine import _sort_children_by_suffix
 
     if isinstance(config, str):
         try:
-            cfg_obj = load_config_remote(config)
+            cfg_obj = laco.load(config)
             cfg_obj[KEY_WEIGHTS] = config
             return cfg_obj
         except FileNotFoundError:
@@ -153,14 +152,14 @@ def read_config(config: ConfigParam) -> DictConfig:
     if isinstance(config, Pathable.__value__):
         logger.info("Reading configuration from path %s", config)
 
-        config_path = file_io.Path(config).resolve().expanduser()
+        config_path = expath.locate(config).resolve().expanduser()
         if not config_path.is_file():
             msg = f"Could not find configuration file at {config_path}"
             raise FileNotFoundError(msg)
         if config_path.suffix not in (".py", ".yaml"):
             msg = f"Configuration file must be a .py or .yaml file, got {config_path}"
             raise ValueError(msg)
-        obj = load_config_local(str(config))
+        obj = laco.load(str(config))
         if not isinstance(obj, DictConfig):
             msg = f"Expected a DictConfig, got {obj}"
             raise TypeError(msg)
@@ -171,7 +170,7 @@ def read_config(config: ConfigParam) -> DictConfig:
             if models_path.is_dir():
                 step_dirs = list(_sort_children_by_suffix(models_path))
                 if len(step_dirs) > 0:
-                    latest_step = file_io.Path(step_dirs[-1])
+                    latest_step = expath.locate(step_dirs[-1])
                     latest_weights = latest_step / "model.safetensors"
                     if latest_weights.is_file():
                         obj[KEY_WEIGHTS] = latest_weights.as_posix()
@@ -202,11 +201,10 @@ def create_engine(config: ConfigParam) -> Engine:
     engine
         A engine instance.
     """
-    from unipercept.config.lazy import instantiate
     from unipercept.engine import Engine
 
     config = read_config(config)
-    engine = T.cast(Engine, instantiate(config.ENGINE))
+    engine = T.cast(Engine, laco.instantiate(config.ENGINE))
 
     with contextlib.suppress(FileExistsError):
         engine.config = config
@@ -222,7 +220,6 @@ def create_model_factory(
     initialized with the default parameters,
     and the configuration file will be used to override them.
     """
-    from unipercept.config.lazy import KEY_WEIGHTS
     from unipercept.model import ModelFactory
 
     config = read_config(config)
@@ -255,8 +252,8 @@ def create_model(
     model
         A model instance.
     """
-    from unipercept import file_io
-    from unipercept.config.lazy import KEY_WEIGHTS, instantiate
+    import expath
+
     from unipercept.model import load_checkpoint
 
     # Check remote
@@ -268,7 +265,7 @@ def create_model(
     # Handle binary PyTorch model
     if (
         isinstance(config, (str, os.PathLike))
-        and (pickle_path := file_io.Path(config)).is_file()
+        and (pickle_path := expath.locate(config)).is_file()
         and pickle_path.suffix == ".bin"
     ):
         logger.info("Loading binary PyTorch model from %s", pickle_path)
@@ -287,7 +284,7 @@ def create_model(
 
     # Default handling
     config = read_config(config)
-    model: ModelBase = instantiate(config.MODEL)
+    model: ModelBase = laco.instantiate(config.MODEL)
 
     if state is not None:
         load_checkpoint(state, model, device=device)
@@ -358,8 +355,6 @@ def create_dataset(
         The dataset metadata.
     """
 
-    from unipercept.config.lazy import instantiate
-
     config: T.Any = read_config(config)
 
     if training:
@@ -370,7 +365,7 @@ def create_dataset(
                 f"Expected an integer for the variant when training=True, got {variant}"
             )
 
-        datafactory = instantiate(loaders[variant].loader)
+        datafactory = laco.instantiate(loaders[variant].loader)
         if batch_size is None:
             batch_size = loaders[variant].batch_size
     else:
@@ -407,7 +402,7 @@ def create_dataset(
                 key_list,
             )
 
-        datafactory = instantiate(loaders[key].loader)
+        datafactory = laco.instantiate(loaders[key].loader)
         if batch_size is None:
             batch_size = 1
 
@@ -461,9 +456,9 @@ def prepare_images(
     info
         The dataset metadata.
     """
+    import expath
     from torch.utils.data import DataLoader
 
-    from unipercept import file_io
     from unipercept.model import InputData
 
     if ops is None:
@@ -471,7 +466,7 @@ def prepare_images(
 
     # List the images using a Glob pattern, such that we can determine whether we are dealing with a flat directory of
     # images or a directory of subdirectories of images.
-    images_root = file_io.Path(images_dir).resolve().expanduser()
+    images_root = expath.locate(images_dir).resolve().expanduser()
 
     image_paths = []
     for s in suffix:
@@ -572,10 +567,10 @@ def create_inputs(
     input
         An ``InputData`` object.
     """
+    import expath
     from torchvision.io import read_image
     from torchvision.transforms.v2.functional import pil_to_tensor
 
-    from unipercept import file_io
     from unipercept.model import CameraModel, CaptureData, InputData
     from unipercept.tensors import ImageTensor
 
@@ -586,7 +581,7 @@ def create_inputs(
 
     for image_spec in images:
         if isinstance(image_spec, str) or isinstance(image_spec, os.PathLike):
-            image_path = file_io.Path(image_spec)
+            image_path = expath.locate(image_spec)
             if not image_path.is_file():
                 raise FileNotFoundError(f"Could not find image file at {image_path}")
             image = read_image(str(image_path))

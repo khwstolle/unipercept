@@ -13,13 +13,14 @@ from __future__ import annotations
 
 import dataclasses as D
 import functools
+import pathlib
 import re
 import typing as T
 
+import expath
 import typing_extensions as TX
 from tqdm import tqdm
 
-from unipercept import file_io
 from unipercept.data.pseudolabeler import PseudoGenerator
 from unipercept.log import get_logger
 
@@ -232,7 +233,7 @@ class KITTISTEPDataset(
     id="kitti-step",
 ):
     split: T.Literal["train", "val", "test"]
-    root: str = "//datasets/kitti-step"
+    root: str = "//unipercept/datasets/kitti-step"
 
     @classmethod
     @TX.override
@@ -242,12 +243,12 @@ class KITTISTEPDataset(
         }
 
     @property
-    def root_path(self) -> file_io.Path:
-        return file_io.Path(self.root)
+    def root_path(self) -> pathlib.Path:
+        return expath.locate(self.root)
 
     @property
     def is_installed(self) -> bool:
-        return file_io.isdir(self.root)
+        return expath.isdir(self.root)
 
     def _discover_files(self) -> T.Iterable[FileID]:
         """

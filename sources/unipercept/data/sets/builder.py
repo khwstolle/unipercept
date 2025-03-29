@@ -16,7 +16,7 @@ import abc
 from dataclasses import field
 from typing import Protocol, TypedDict
 
-from unipercept.file_io import Path, Pathable
+import expath
 
 
 class DatasetMetadata:
@@ -40,7 +40,6 @@ class DatasetConfig(TypedDict):
     r"""
     Represents a configuration object for a dataset.
     """
-
 
 
 class DatasetProtocol[Manifest: DatasetManifest, Metadata: DatasetMetadata, Item](
@@ -95,15 +94,18 @@ class DatasetBuilder[
         """
 
     @abc.abstractmethod
-    def build(self, *, to: Path, **kwargs) -> tuple[Manifest, Metadata]:
+    def build(self, *, to: expath.locate, **kwargs) -> tuple[Manifest, Metadata]:
         r"""
         Build the dataset and write the manifest and metadata to disk.
         """
 
     def __call__(
-        self, *, interactive: bool = False, to: Pathable = "//cache/datasets/{key}"
+        self,
+        *,
+        interactive: bool = False,
+        to: expath.PathType = "//unipercept/cachedatasets/{key}",
     ) -> tuple[Manifest, Metadata]:
-        path_dataset = Path(to)
+        path_dataset = expath.locate(to)
 
         self.prepare(interactive=interactive)
-        self.build(to=Path(to))
+        self.build(to=expath.locate(to))

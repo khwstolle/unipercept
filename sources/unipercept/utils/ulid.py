@@ -16,7 +16,6 @@ import uuid
 from datetime import UTC
 
 import typing_extensions as TX
-
 from unipercept.types import Buffer, Datetime, Primitive
 
 __all__ = ["Timestamp", "Randomness", "ULID", "base32_encode", "base32_decode"]

@@ -19,7 +19,6 @@ import numpy.typing as NP
 import torch
 import torch.distributed
 import torch.utils.data
-
 from unipercept.utils.frozendict import frozendict
 
 __all__ = ["Dataset"]
@@ -113,7 +112,7 @@ class Dataset[
 
     @property
     def cache_path(self) -> str:
-        return f"//cache/manifest/{self.hash}.yaml"
+        return f"//unipercept/cachemanifest/{self.hash}.yaml"
 
     @property
     def manifest(self) -> _T_MFST:

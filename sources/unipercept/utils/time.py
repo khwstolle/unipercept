@@ -15,7 +15,6 @@ from typing import override
 import pandas as pd
 import torch
 from tensordict import TensorDict
-
 from unipercept.types import Device
 
 __all__ = ["get_timestamp", "ProfileAccumulator", "profile"]

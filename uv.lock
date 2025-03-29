@@ -640,7 +640,6 @@ name = "fvcore"
 version = "0.1.5.post20221221"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "iopath" },
     { name = "numpy" },
     { name = "pillow" },
     { name = "pyyaml" },
@@ -791,30 +790,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c909642694d71c9fcf53e5b504f2d96afea02718862f3/iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7", size = 4793 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050 },
-]
-
-[[package]]
-name = "iopath"
-version = "0.1.10"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "portalocker" },
-    { name = "tqdm" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/72/73/b3d451dfc523756cf177d3ebb0af76dc7751b341c60e2a21871be400ae29/iopath-0.1.10.tar.gz", hash = "sha256:3311c16a4d9137223e20f141655759933e1eda24f8bff166af834af3c645ef01", size = 42226 }
-
-[[package]]
-name = "iopathlib"
-version = "0.0.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "tqdm" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/22/0c657694037fc97616e6cb703015b1e3030e3139138902a02cb58fbcc9c0/iopathlib-0.0.3-cp312-none-any.whl", hash = "sha256:ba0169a8393bca3cfcf9f18321c90a7d3f5049fa629caceeec3136b255f201a6", size = 57554 },
-    { url = "https://files.pythonhosted.org/packages/82/e6/a2faccf51e78246f2669f2593a97867eb57ec06b7574a3740ac7ea1a6cd2/iopathlib-0.0.3-cp313-none-any.whl", hash = "sha256:9c4588121678641b328f4d468a254bf50ba23b2139cf2391fd8f40e73d2b8e60", size = 58494 },
-    { url = "https://files.pythonhosted.org/packages/42/d0/e965e6e92591519a32b26f5d41406999651bd2f5e1447358a27999517584/iopathlib-0.0.3-py3-none-any.whl", hash = "sha256:0a438e1a9234c424f2bdd0fab0961447a0963a33d2b8760cfcf732d5181f65b4", size = 35250 },
 ]
 
 [[package]]
@@ -3121,8 +3096,6 @@ dependencies = [
     { name = "ftfy" },
     { name = "fvcore" },
     { name = "hydra-core" },
-    { name = "iopath" },
-    { name = "iopathlib" },
     { name = "laco" },
     { name = "libsixel-python" },
     { name = "matplotlib" },
@@ -3183,8 +3156,6 @@ requires-dist = [
     { name = "fvcore" },
     { name = "hydra-core" },
     { name = "hypothesis", marker = "extra == 'tests'" },
-    { name = "iopath" },
-    { name = "iopathlib" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },
     { name = "ipython-autotime", marker = "extra == 'notebooks'" },
     { name = "ipywidgets", marker = "extra == 'notebooks'" },

@@ -8,12 +8,13 @@ import random
 import sys
 import typing as T
 
+import expath
 import pandas as pd
+import render
 import torch
 from tabulate import tabulate_formats
 from tqdm import tqdm
 
-from unipercept import file_io, render
 from unipercept.cli._command import command, logger
 from unipercept.data.sets import PerceptionDataset, catalog
 from unipercept.data.sets._metadata import Metadata
@@ -322,7 +323,7 @@ class ListSequences(Subcommand, name="list-sequences"):
         prs.add_argument(
             "--output",
             default=None,
-            type=file_io.Path,
+            type=expath.locate,
             help="path to save the output dataframe to",
         )
 
@@ -379,7 +380,7 @@ class StatsSubcommand(Subcommand, name="stats"):
         prs.add_argument(
             "--output",
             default=None,
-            type=file_io.Path,
+            type=expath.locate,
             help="path to save the output dataframe to",
         )
 
@@ -508,7 +509,7 @@ class CacheSubcommand(Subcommand, name="cache"):
         for variant in ds_cls.variants():
             ds = ds_cls(**variant)
             path_str = ds.cache_path
-            path = file_io.Path(path_str)
+            path = expath.locate(path_str)
 
             exists = path.is_file()
             if args.purge and exists:
@@ -535,7 +536,7 @@ class LabelAnalysisSubcommand(Subcommand, name="analyze-labels"):
     @T.override
     def setup(prs: argparse.ArgumentParser):
         prs.add_argument(
-            "--output", "-o", type=file_io.Path, default=None, help="output directory"
+            "--output", "-o", type=expath.locate, default=None, help="output directory"
         )
         prs.add_argument("dataset", nargs="+", help="dataset name(s)")
 

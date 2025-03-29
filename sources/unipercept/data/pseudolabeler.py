@@ -5,6 +5,7 @@ from __future__ import annotations
 import functools
 import typing as T
 
+import expath
 import numpy as np
 import PIL.Image as pil_image
 import torch
@@ -12,7 +13,6 @@ import torch.utils.data
 from torch import nn
 from tqdm import tqdm
 
-from unipercept import file_io
 from unipercept.data.pipes import PILImageLoaderDataset
 from unipercept.log import logger
 from unipercept.utils.memory import find_executable
@@ -119,7 +119,8 @@ class PseudoGenerator:
         instance: pil_image.Image,
         panoptic_path: Pathable,
     ) -> PanopticTensor:
-        from unipercept import file_io
+        import expath
+
         from unipercept.tensors import PanopticTensor
 
         seg = torch.from_numpy(np.asarray(semantic).astype(np.int32))
@@ -134,7 +135,7 @@ class PseudoGenerator:
 
         pan = PanopticTensor.from_parts(semantic=seg.cpu(), instance=ins.cpu())
 
-        panoptic_path = file_io.Path(panoptic_path)
+        panoptic_path = expath.locate(panoptic_path)
         pan.save(panoptic_path, format=self._panoptic_format)
 
         assert panoptic_path.exists(), f"Panoptic map not saved to {panoptic_path}!"
@@ -142,13 +143,13 @@ class PseudoGenerator:
         return pan
 
     def run_panoptic_merge_queue(self):
-        from unipercept import file_io
+        import expath
 
         if len(self._panoptic_merge_queue) == 0:
             return
 
         for items in tqdm(self._panoptic_merge_queue, desc="Panoptic merging"):
-            semantic_path, instance_path, panoptic_path = map(file_io.Path, items)
+            semantic_path, instance_path, panoptic_path = map(expath.locate, items)
             semantic = pil_image.open(semantic_path)
             instance = pil_image.open(instance_path)
             try:
@@ -196,9 +197,9 @@ class PseudoGenerator:
 
         # Use a dataset to load the images in parallel
         ds = PILImageLoaderDataset(
-            image_paths=[file_io.Path(p) for p, _ in self._depth_generate_queue]
+            image_paths=[expath.locate(p) for p, _ in self._depth_generate_queue]
         )
-        to = [file_io.Path(p) for _, p in self._depth_generate_queue]
+        to = [expath.locate(p) for _, p in self._depth_generate_queue]
 
         @find_executable
         def closure(n: int):

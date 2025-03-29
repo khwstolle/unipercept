@@ -12,10 +12,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal, override
 
+import expath
 import typing_extensions as TX
 from tqdm import tqdm
 
-from unipercept import file_io
 from unipercept.data.pseudolabeler import PseudoGenerator
 from unipercept.render import colormap
 
@@ -101,14 +101,14 @@ class PascalVOCDataset(PerceptionDataset, id="pascal-voc", info=get_info):
     Panoptic segmentation ground truths are generated on the fly, and cached to disk.  See: ``_build_panoptic``.
     """
 
-    root: str = "//datasets/voc"
+    root: str = "//unipercept/datasets/voc"
     split: Literal["train", "val", "trainval", "test"] = "train"
     year: str = "2012"
 
     def _get_torchvision_dataset(self, *, download=False):
         from torchvision.datasets import VOCSegmentation
 
-        root = file_io.get_local_path(self.root)
+        root = expath.locate(self.root)
 
         return VOCSegmentation(
             root, year=self.year, image_set=self.split, download=download
@@ -147,7 +147,7 @@ class PascalVOCDataset(PerceptionDataset, id="pascal-voc", info=get_info):
 
         with PseudoGenerator() as pseudo_gen:
             for i in tqdm(range(len(src_img)), desc="Building (pseudo) labels"):
-                pan_path = file_io.Path(src_pan[i])
+                pan_path = expath.locate(src_pan[i])
                 if not pan_path.is_file():
                     seg_path = Path(src_seg[i])
                     ins_path = Path(
@@ -155,8 +155,8 @@ class PascalVOCDataset(PerceptionDataset, id="pascal-voc", info=get_info):
                     )
                     pseudo_gen.add_panoptic_merge_task(seg_path, ins_path, pan_path)
 
-                img_path = file_io.Path(src_img[i])
-                dep_path = file_io.Path(src_dep[i])
+                img_path = expath.locate(src_img[i])
+                dep_path = expath.locate(src_dep[i])
                 if not dep_path.is_file():
                     pseudo_gen.add_depth_generator_task(img_path, dep_path)
 

@@ -10,9 +10,9 @@ from __future__ import annotations
 import argparse
 from sys import stdout
 
+import expath
+import render
 from PIL import Image as pil_image
-
-from unipercept import file_io, render
 
 from ._command import command
 
@@ -23,7 +23,7 @@ def show(p: argparse.ArgumentParser):
 
     def main(args):
         for path_str in args.path:
-            path = file_io.Path(path_str)
+            path = expath.locate(path_str)
             if str(path) != path_str:
                 print(f"{path_str} -> {str(path)}", file=stdout, flush=True)
             else:
@@ -39,7 +39,7 @@ def show(p: argparse.ArgumentParser):
     return main
 
 
-def _show_image(path: file_io.Path):
+def _show_image(path: expath.locate):
     img = pil_image.open(path)
     render.terminal.show(img)
 

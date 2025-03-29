@@ -3,8 +3,6 @@ Defines a lazy module factory that allows to create a module's __getattr__ and _
 name and exported module list.
 """
 
-from __future__ import annotations
-
 import importlib
 import typing as T
 

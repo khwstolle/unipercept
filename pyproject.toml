@@ -31,7 +31,7 @@ dependencies = [
     "timm >= 0.6.14",
     "bullet >= 2.2.0",
     "accelerate >= 0.32.2",
-    "iopathlib",
+    "expath",
     "laco",
     "evaluators",
     "statistics",
@@ -40,7 +40,6 @@ dependencies = [
     "opencv-python",
     "omegaconf",
     "hydra-core",
-    "iopath",
     "fvcore",
     "transformers",
     "seaborn",
@@ -50,6 +49,7 @@ dependencies = [
     "ftfy",
     "wandb",
     "libsixel-python",
+    "pycocotools",
 ]
 dynamic = ["version"]
 
@@ -79,8 +79,14 @@ wilddash = "unipercept.data.sets.wilddash:WildDashDataset"
 timm = "unipercept.nn.backbones.timm:TimmBackbone"
 torchvision = "unipercept.nn.backbones.torchvision:TorchvisionBackbone"
 
+[project.entry-points.expath]
+unipercept-cache = "unipercept._paths:build_cache_path_handler"
+unipercept-datasets = "unipercept._paths:build_datasets_path_handler"
+unipercept-output = "unipercept._paths:build_output_path_handler"
+unipercept-scratch = "unipercept._paths:build_scratch_path_handler"
+
 [tool.setuptools]
-include-package-data = false
+include-package-data = true
 
 [tool.setuptools.package-data]
 unipercept = ["py.typed"]
@@ -189,6 +195,7 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F403", "F401"]
 "**/__init__.pyi" = ["F403", "F401"]
+"tests/**/*.py" = ["F401", "F841", "E501", "E722", "E741", "PLR2004"]
 
 [tool.ruff.format]
 docstring-code-format = true

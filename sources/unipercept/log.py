@@ -25,12 +25,12 @@ import warnings
 from collections import Counter
 from typing import override
 
+import expath
 import pandas as pd
 import tabulate
 from termcolor import colored
 
 import unipercept.utils.inspect as inspect_utils
-from unipercept import file_io
 
 __all__ = []
 
@@ -340,8 +340,8 @@ def _canonicalize_name(name: str) -> str:
     result = []
     for name in name.split(" "):
         if name.endswith(".py"):
-            file = file_io.Path(name)
-            root = file_io.Path(__file__).parent
+            file = expath.locate(name)
+            root = expath.locate(__file__).parent
             if file.is_relative_to(root):
                 name = file.relative_to(root).with_suffix("").as_posix()
                 name = name.replace("/", ".")
@@ -416,7 +416,7 @@ def _get_handler(
 
     # Logging to file
     if output is not None:
-        filename = file_io.Path(output)
+        filename = expath.locate(output)
         if filename.suffix in (".txt", ".log"):
             filename = filename
         elif filename.suffix == "":
@@ -462,7 +462,7 @@ def _get_stream(filename) -> io.IOBase:
     """
     Taken from the `detectron` implementation.
     """
-    io = file_io.open(filename, "a", buffering=1024**2)
+    io = expath.open(filename, "a", buffering=1024**2)
     atexit.register(io.close)
     return io
 

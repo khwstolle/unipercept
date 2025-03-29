@@ -11,6 +11,7 @@ import enum as E
 import functools
 import typing as T
 
+import expath
 import laco
 import typing_extensions as TX
 import wandb
@@ -18,7 +19,6 @@ import wandb.errors
 from accelerate.tracking import WandBTracker as WandBTrackerBase
 from torch import nn
 
-from unipercept import file_io
 from unipercept.engine import EngineParams
 from unipercept.engine.callbacks import CallbackDispatcher, Signal, State
 from unipercept.log import get_logger
@@ -208,7 +208,7 @@ class WandBCallback(CallbackDispatcher):
                 "./sources", include_fn=lambda path, root: path.endswith(".py")
             )
         if self.upload_config:
-            assert file_io.isfile(
+            assert expath.isfile(
                 config_path
             ), f"Config file {config_path} does not exist!"
             self.run.log_artifact(

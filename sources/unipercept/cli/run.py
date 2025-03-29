@@ -48,7 +48,7 @@ def _main(args: argparse.Namespace):
     model = up.create_model(args.config)
     preprocess = _build_transforms(args)
 
-    if up.file_io.isdir(args.input):
+    if up.expath.isdir(args.input):
         run = _run_filesystem(model, preprocess, args.input)
     else:
         cap_num = int(args.input)
@@ -104,7 +104,7 @@ def _run_realtime(model, preprocess, cap):
 
 
 def _run_filesystem(model, preprocess, path):
-    root = up.file_io.Path(path)
+    root = up.expath.locate(path)
     root_paths = list(root.iterdir())
 
     if all(p.is_dir() for p in root_paths):

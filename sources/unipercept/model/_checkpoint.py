@@ -2,10 +2,10 @@ import enum as E
 import os
 import typing as T
 
+import expath
 import torch
 from torch import nn
 
-from unipercept import file_io
 from unipercept.log import logger
 from unipercept.types import Pathable, StateDict, Tensor
 
@@ -17,7 +17,7 @@ def read_checkpoint(state: Pathable, device: str = "cpu") -> dict[str, Tensor]:
     Read a state dict from a path.
     """
 
-    state_path = file_io.Path(state)
+    state_path = expath.locate(state)
     if state_path.is_dir():
         state_path = state_path / "model.safetensors"
     if not state_path.is_file():

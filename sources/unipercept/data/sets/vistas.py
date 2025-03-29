@@ -8,9 +8,9 @@ import typing as T
 from datetime import datetime
 from typing import override
 
+import expath
 import typing_extensions as TX
 
-from unipercept import file_io
 from unipercept.data.pseudolabeler import PseudoGenerator
 from unipercept.data.sets.cityscapes import CAMERA
 
@@ -980,7 +980,7 @@ class MapillaryVistasDataset(PerceptionDataset, info=get_info, id="mapillary-vis
     """
 
     split: T.Literal["train", "val", "test"]
-    root: str = "//datasets/vistas"
+    root: str = "//unipercept/datasets/vistas"
 
     @classmethod
     @TX.override
@@ -993,7 +993,7 @@ class MapillaryVistasDataset(PerceptionDataset, info=get_info, id="mapillary-vis
     def _build_manifest(self) -> Manifest:
         from tqdm import tqdm
 
-        split_dir = file_io.Path(self.root) / f"{self.split}ing"
+        split_dir = expath.locate(self.root) / f"{self.split}ing"
         with PseudoGenerator() as pseudogen:
             sequences: T.Mapping[str, ManifestSequence] = {}
 
@@ -1022,7 +1022,7 @@ class MapillaryVistasDataset(PerceptionDataset, info=get_info, id="mapillary-vis
                 }
 
                 def _source_exists(src):
-                    return file_io.Path(src["path"]).exists()
+                    return expath.locate(src["path"]).exists()
 
                 if not _source_exists(sources["panoptic"]) or self.split == "test":
                     del sources["panoptic"]

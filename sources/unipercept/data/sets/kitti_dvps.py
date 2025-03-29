@@ -28,9 +28,9 @@ import os
 import typing as T
 import zipfile
 
+import expath
 from tqdm import tqdm
 
-from unipercept import file_io
 from unipercept.state import cpus_available
 from unipercept.utils.image import size as get_image_size
 from unipercept.utils.time import get_timestamp
@@ -216,7 +216,7 @@ class KITTIDVPSDataset(
     """
 
     split: T.Literal["train", "val"]
-    root: str = "//datasets/semkitti-dvps"
+    root: str = "//unipercept/datasets/semkitti-dvps"
     pseudo: bool = True
 
     @classmethod
@@ -234,17 +234,17 @@ class KITTIDVPSDataset(
         The default download URL is provided by the authors of PolyphonicFormer.
         """
 
-        if file_io.is_dir(self.root) and not force:
+        if expath.is_dir(self.root) and not force:
             return
 
-        archive_path = file_io.get_local_path(DOWNLOAD_URL)
+        archive_path = expath.locate(DOWNLOAD_URL)
         with zipfile.ZipFile(archive_path) as zip:
             zip.extractall(self.root)
-        file_io.rm(archive_path)
+        expath.rm(archive_path)
 
     @T.override
     def _build_manifest(self) -> Manifest:
-        cap_root = file_io.Path(self.root) / "video_sequence" / self.split
+        cap_root = expath.locate(self.root) / "video_sequence" / self.split
         if not cap_root.exists():
             msg = f"Captures path {cap_root} does not exist!"
             raise RuntimeError(msg)
@@ -303,7 +303,7 @@ class KITTIDVPSDataset(
 
 
 def _discover_captures(
-    directory: file_io.Path, *, unknown_ok: bool = True
+    directory: expath.locate, *, unknown_ok: bool = True
 ) -> dict[tuple[str, str], list[str | None]]:
     files_map: dict[tuple[str, str], list[str | None]] = {}
     with os.scandir(directory) as entries:
@@ -342,7 +342,7 @@ def _build_camera_record(
     if dep_src is not None:
         dep_path = dep_src["path"]
         assert isinstance(dep_path, str), f"Depth path is not a string: {dep_path}"
-        focal_length = float(file_io.Path(dep_path).stem.split("_")[-1])
+        focal_length = float(expath.locate(dep_path).stem.split("_")[-1])
     else:
         focal_length = DEFAULT_FOCAL_LENGTH
 
@@ -363,7 +363,7 @@ def _build_camera_record(
 
 
 def _build_capture_record(
-    item: tuple[tuple[str, str], list[str]], *, root: file_io.Path
+    item: tuple[tuple[str, str], list[str]], *, root: expath.locate
 ) -> tuple[str, CaptureRecord]:
     (seq_id, frame_name), files = item
 

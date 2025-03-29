@@ -34,7 +34,7 @@ build:
 	python -m build --wheel
 
 compile:
-	python -m pyc_wheel dist/iopathlib-*.whl --optimize 2
+	python -m pyc_wheel dist/*.whl --optimize 2
 
 dist: 
 	uv run twine check dist/*

@@ -10,6 +10,7 @@ import functools
 import gc
 import math
 import operator
+import pathlib
 import re
 import shutil
 import sys
@@ -18,6 +19,8 @@ import typing
 from datetime import datetime
 from typing import override
 
+import expath
+import laco
 import matplotlib.pyplot as plt
 import torch
 import torch.optim
@@ -32,9 +35,7 @@ from torch import nn
 from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils._pytree import tree_map_only
-import laco
 
-from unipercept import file_io
 from unipercept.data import DataLoaderFactory
 from unipercept.engine._params import (
     EngineParams,
@@ -107,7 +108,7 @@ class Engine:
     _params: EngineParams
     _state: State
     _xlr: Accelerator | None
-    _root: file_io.Path | None
+    _root: expath.PathType| None
     _config: dict[str, typing.Any] | None
     _stages: list[TrainingStage]
     _evaluators: dict[str, EvaluationSuite]
@@ -248,13 +249,13 @@ class Engine:
         return sel if isinstance(sel, tuple) else (sel,)
 
     @property
-    def session_dir(self) -> file_io.Path:
+    def session_dir(self) -> pathlib.Path:
         """
         Returns the local path to the root directory of this engine as a ``pathlib.Path`` class.
         """
         if self._root is None:
-            self._root = file_io.Path(
-                f"//output/{self._params.project_name}/{str(self.session_id)}"
+            self._root = expath.locate(
+                f"//unipercept/output/{self._params.project_name}/{str(self.session_id)}"
             )
             self.xlr  # Force initialization of Accelerator
         return self._root
@@ -264,10 +265,10 @@ class Engine:
         if self._xlr is not None:
             msg = "Cannot change the root directory after the engine has started a session."
             raise RuntimeError(msg)
-        self._root = file_io.Path(value)
+        self._root = expath.locate(value)
 
     @property
-    def config_path(self) -> file_io.Path:
+    def config_path(self) -> pathlib.Path:
         return self.session_dir / "config.yaml"
 
     @property
@@ -295,7 +296,7 @@ class Engine:
         logger.info("Loading configuration from %s", path)
 
         try:
-            lazy = laco.load_config_local(str(path))
+            lazy = laco.load(str(path))
         except Exception as e:  # noqa: PIE786
             msg = f"Could not load configuration from {path!r} {e}"
             logger.warning(msg)
@@ -316,25 +317,25 @@ class Engine:
                 msg = f"Configuration file already exists at {path}"
                 raise FileExistsError(msg)
             logger.info("Saving configuration to %s", path)
-            laco.save_config(value, str(path))
+            laco.save(value, str(path))
         self._config = None  # NOTE: loaded ad-hoc
 
     @property
-    def logging_dir(self) -> file_io.Path:
+    def logging_dir(self) -> pathlib.Path:
         """
         Returns the local path to the logs directory of this engine as a ``pathlib.Path`` class.
         """
-        return file_io.Path(self.xlr.logging_dir)
+        return expath.locate(self.xlr.logging_dir)
 
     @property
-    def outputs_dir(self) -> file_io.Path:
+    def outputs_dir(self) -> pathlib.Path:
         """
         Returns the local path to the outputs directory of this engine as a ``pathlib.Path`` class.
         """
-        return file_io.Path(self.xlr.project_dir)
+        return expath.locate(self.xlr.project_dir)
 
     @property
-    def states_dir(self) -> file_io.Path:
+    def states_dir(self) -> pathlib.Path:
         """
         Every stage has a unique checkpoints directory - this is because checkpoints between stages are often incompatible
         """
@@ -342,14 +343,14 @@ class Engine:
         return self.outputs_dir / "states" / f"stage_{self._state.stage}"
 
     @property
-    def models_dir(self) -> file_io.Path:
+    def models_dir(self) -> pathlib.Path:
         assert self._state.stage >= 0, f"{self._state.stage=}"
         return self.outputs_dir / "models" / f"stage_{self._state.stage}"
 
     def recover(
         self,
         model: nn.Module | None = None,
-        checkpoint: str | file_io.Path | None = None,
+        checkpoint: str | expath.PathType| None = None,
     ) -> None:
         """
         Recover a model's state and the engine's state from the given checkpoint. The model is prepared in
@@ -661,7 +662,7 @@ class Engine:
 
             # Create a path for the current suite
             if path is not None:
-                path_suite = file_io.Path(path) / suite.name
+                path_suite = expath.locate(path) / suite.name
                 path_suite.mkdir(parents=True, exist_ok=True)
             else:
                 path_suite = None
@@ -1193,14 +1194,14 @@ class Engine:
             f"Expecting {samples_total} samples ({batch_total} batches, offsets {batch_offsets})"
         )
         if path is None:
-            path = file_io.Path(
-                f"//scratch/{self._params.project_name}/"
+            path = expath.locate(
+                f"//unipercept/scratch/{self._params.project_name}/"
                 f"{str(self.session_id)}/results/{prefix}"  # .h5"
             )
             path.mkdir(parents=True, exist_ok=True)
             path_is_scratch = True
         else:
-            path = file_io.Path(path)
+            path = expath.locate(path)
             path_is_scratch = False
         path_memory = path / "memory"
         path_evaluators = path / "evaluators"
@@ -1674,7 +1675,7 @@ class Engine:
         """
         from accelerate import load_checkpoint_and_dispatch
 
-        path = file_io.get_local_path(path)
+        path = expath.locate(path)
         logger.debug(
             "Loading weights using Accelerate: %s (%s)",
             path,
@@ -1698,7 +1699,7 @@ class Engine:
             The directory to save the model checkpoints to.
         """
 
-        path = file_io.Path(path or (self.models_dir / f"step_{self._state.step}"))
+        path = expath.locate(path or (self.models_dir / f"step_{self._state.step}"))
 
         barrier()
 
@@ -1727,9 +1728,9 @@ class Engine:
         Load the engine state from the given path, if no path is given, the last checkpoint is used.
         """
         if path is not None:
-            path = file_io.Path(path)
+            path = expath.locate(path)
         elif self._recover_path is not None:
-            path = file_io.Path(self._recover_path)
+            path = expath.locate(self._recover_path)
         else:
             if (
                 not self.states_dir.is_dir()
@@ -1749,7 +1750,7 @@ class Engine:
         Save the engine state for recovery/resume. Sometimes called a 'checkpoint'.
         """
 
-        path = file_io.Path(path or (self.states_dir / f"step_{self._state.step}"))
+        path = expath.locate(path or (self.states_dir / f"step_{self._state.step}"))
 
         barrier()
 
@@ -1782,7 +1783,7 @@ class Engine:
         for key, img in visuals.items():
             if self._params.eval_write_visuals:
                 img_path = (
-                    file_io.Path(self.xlr.project_dir)
+                    expath.locate(self.xlr.project_dir)
                     / "visuals"
                     / f"{prefix}-{self._state.step}"
                     / f"{key}"
@@ -1882,7 +1883,7 @@ def _sort_children_by_suffix(path: Pathable) -> typing.Iterable[str]:
     str
         The path to the child.
     """
-    items = file_io.ls(str(path))
+    items = expath.ls(str(path))
     items = map(lambda p: (p, _RE_NUMERIC_SUFFIX.search(p)), items)
     items = typing.cast(
         list[tuple[str, re.Match]], filter(lambda p: p[1] is not None, items)
@@ -1890,7 +1891,7 @@ def _sort_children_by_suffix(path: Pathable) -> typing.Iterable[str]:
     items = sorted(items, key=lambda p: int(p[1].group(1)))
 
     for item, _ in items:
-        item_full = file_io.join(path, item)
+        item_full = expath.join(path, item)
         yield item_full
 
 
@@ -1942,12 +1943,12 @@ def _cleanup_generated_items(path: Pathable, max_items: int) -> None:
         return
 
     for child in items[:-max_items]:
-        if file_io.isdir(child):
-            local_path = file_io.get_local_path(child)
+        if expath.isdir(child):
+            local_path = expath.locate(child)
             shutil.rmtree(local_path, ignore_errors=False)
         else:
-            assert file_io.exists(child), f"Expected {child} to exist"
-            file_io.rm(child)
+            assert expath.exists(child), f"Expected {child} to exist"
+            expath.rm(child)
 
 
 def _enforce_prefix(

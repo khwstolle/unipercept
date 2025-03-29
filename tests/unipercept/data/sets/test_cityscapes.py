@@ -3,8 +3,9 @@ from __future__ import annotations
 import typing
 from pathlib import Path
 
+import expath
 import pytest
-from unipercept import file_io, get_dataset
+from unipercept import get_dataset
 from unipercept.data import collect
 from unipercept.utils.dataset import Dataset
 
@@ -91,9 +92,9 @@ def test_cityscapes_static(split):
 
     ds_cls = get_dataset("cityscapes")
     assert ds_cls is CityscapesDataset, ds_cls
-    if not file_io.isdir(ds_cls.root):
+    if not expath.isdir(ds_cls.root):
         pytest.skip(
-            f"Dataset {ds_cls.__name__} not installed @ {file_io.get_local_path(ds_cls.root)}"
+            f"Dataset {ds_cls.__name__} not installed @ {expath.locate(ds_cls.root)}"
         )
     ds = ds_cls(split=split, queue_fn=collect.GroupAdjacentTime(1))
 
@@ -113,9 +114,9 @@ def test_cityscapes_vps(split, all, pair_size):
 
     ds_cls = get_dataset("cityscapes-vps")
     assert ds_cls is CityscapesVPSDataset, ds_cls
-    if not file_io.isdir(ds_cls.root):
+    if not expath.isdir(ds_cls.root):
         pytest.skip(
-            f"Dataset {ds_cls.__name__} not installed @ {file_io.get_local_path(ds_cls.root)}"
+            f"Dataset {ds_cls.__name__} not installed @ {expath.locate(ds_cls.root)}"
         )
     ds = ds_cls(split=split, queue_fn=collect.GroupAdjacentTime(pair_size), all=all)
 

@@ -96,7 +96,7 @@ def _main(args):
         if session_id_recovered is None:
             msg = "Training configuration does not support resumption"
             raise ValueError(msg)
-        config_path = up.file_io.Path(args.config_path)
+        config_path = up.expath.locate(args.config_path)
         if not config_path.suffix.endswith(".yaml"):
             msg = "Cannot resume training without a YAML config file"
             raise ValueError(msg)
@@ -143,11 +143,11 @@ def _main(args):
                 model_factory, max(args.stage, 0), weights=args.weights or None
             )
     except KeyboardInterrupt:
-        output_path = up.file_io.Path("//output/").resolve()
+        output_path = up.expath.locate("//unipercept/output/").resolve()
         config_path = engine.config_path.resolve()
         if config_path.is_relative_to(output_path):
             config_path = config_path.relative_to(output_path).as_posix()
-            config_path = f"//output/{config_path}"
+            config_path = f"//unipercept/output/{config_path}"
 
         print("\n", flush=True, file=sys.stdout)
         print("\n", flush=True, file=sys.stderr)

@@ -5,7 +5,10 @@ Commands that create renders.
 import argparse
 import typing as T
 
-from unipercept import file_io, render, tensors
+import expath
+import render
+import tensors
+
 from unipercept.cli._command import command, logger
 from unipercept.data.sets import catalog
 from unipercept.utils.seed import set_seed
@@ -59,7 +62,7 @@ def _add_path_args(prs: argparse.ArgumentParser, formats: T.Iterable[str]):
     )
     prs.add_argument(
         "inputs",
-        type=file_io.Path,
+        type=expath.locate,
         nargs="+",
         help="target files",
     )
@@ -77,7 +80,7 @@ class DepthSubcommand(Subcommand, name="depth"):
 
     @staticmethod
     def render(
-        input_file: file_io.Path,
+        input_file: expath.locate,
         *,
         overwrite: bool,
         dry_run: bool,

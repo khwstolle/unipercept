@@ -9,7 +9,6 @@ from types import EllipsisType
 import regex as re
 import torch
 import torch.overrides
-from fvcore.nn.weight_init import c2_msra_fill, c2_xavier_fill
 from torch import nn
 from torch.nn.init import (
     _calculate_correct_fan,
@@ -19,6 +18,21 @@ from torch.nn.init import (
 from torch.nn.modules.conv import _ConvNd
 
 from unipercept.types import Tensor
+
+
+def c2_xavier_fill(module: nn.Module) -> None:
+    """Caffe2 Xavier fill."""
+    nn.init.kaiming_uniform_(module.weight, a=1)
+    if module.bias is not None:
+        nn.init.constant_(module.bias, 0)
+
+
+def c2_msra_fill(module: nn.Module) -> None:
+    """Caffe2 MSRA fill."""
+    nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
+    if module.bias is not None:
+        nn.init.constant_(module.bias, 0)
+
 
 _NONLINEARITY_TO_CANONICAL_MAP: T.OrderedDict[
     type[nn.Module] | re.Pattern, tuple[str, T.Any]
@@ -388,7 +402,6 @@ def init_parameters_(
 
             for bias in biases:
                 nn.init.zeros_(bias)
-
 
         case InitMode.KAIMING_NORMAL:
             nonlinearity = kwargs.pop("nonlinearity", "relu")

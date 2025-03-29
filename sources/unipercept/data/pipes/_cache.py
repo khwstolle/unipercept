@@ -6,9 +6,8 @@ import typing as T
 import warnings
 from typing import Generic
 
+import expath
 import yaml
-
-from unipercept import file_io
 
 __all__ = ["LazyPickleCache", "LazyYAMLCache"]
 
@@ -34,7 +33,7 @@ class LazyPickleCache(Generic[_M]):
         assert self.path.endswith(self.file_ext), self.path
 
     def exists(self, *, check_valid: bool = True) -> bool:
-        path = file_io.get_local_path(self.path)
+        path = expath.locate(self.path)
         if not os.path.exists(path) or not os.path.isfile(path):
             return False
         if check_valid:
@@ -49,13 +48,13 @@ class LazyPickleCache(Generic[_M]):
 
     def store(self, items: _M) -> None:
         items = dict(items)  # type: ignore
-        path = file_io.Path(self.path)
+        path = expath.locate(self.path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("wb" if self.is_binary else "w") as fh:
             self._write_file(items, fh)  # type: ignore
 
     def read(self) -> _M:
-        path = file_io.get_local_path(self.path, force=True)
+        path = expath.locate(self.path, force=True)
         with open(path, "rb" if self.is_binary else "r") as fh:
             items = self._read_file(fh)  # type: ignore
 

@@ -14,14 +14,12 @@ from typing import (
 )
 
 import cv2
+import expath
 import numpy as np
 import PIL.Image as pil_image
 import torch
 import torchvision.tv_tensors
 from typing_extensions import deprecated
-
-from unipercept.file_io import get_local_path
-from unipercept.types import Pathable
 
 __all__ = ["multi_read", "NoEntriesAction", "get_kwd", "read_pixels"]
 
@@ -59,7 +57,7 @@ def write_png(*args, **kwargs):
     return write_png_rgb(*args, **kwargs)
 
 
-def write_png_rgb(path: Pathable, tensor: torch.Tensor):
+def write_png_rgb(path: expath.PathType, tensor: torch.Tensor):
     """Write a tensor to a PNG file (RGB)"""
     assert tensor.ndim == 3
     if tensor.shape[0] == 3:
@@ -67,14 +65,14 @@ def write_png_rgb(path: Pathable, tensor: torch.Tensor):
     elif tensor.shape[-1] != 3:
         raise ValueError("Input tensor must have 3 channels (CHW or HWC)")
 
-    path = get_local_path(path)
+    path = expath.locate(path)
     image = tensor.cpu().numpy().astype("uint8")
     pil_image.fromarray(image, mode="RGB").save(path)
 
 
-def write_png_l16(path: Pathable, tensor: torch.Tensor):
+def write_png_l16(path: expath.PathType, tensor: torch.Tensor):
     """Write a tensor to a PNG file (L; 16-bit)"""
-    path = get_local_path(path)
+    path = expath.locate(path)
     image = tensor.cpu().numpy().astype("uint16")
     pil_image.fromarray(image).save(path)
 

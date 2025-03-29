@@ -6,7 +6,6 @@ import torch
 import torch.signal
 import torchvision.transforms.v2.functional as tvfn
 from torch import Tensor, nn
-
 from unipercept.utils.signal import get_gaussian_2d
 
 __all__ = ["masks_to_centers", "masks_to_boxes"]
@@ -232,7 +231,6 @@ if __name__ == "__main__":
     import matplotlib.patches as pat
     import matplotlib.pyplot as plt
     import torch
-
     import unipercept as up
 
     mask1 = torch.zeros(128, 128)

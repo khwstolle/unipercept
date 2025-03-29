@@ -30,7 +30,7 @@ def evaluate(p: argparse.ArgumentParser):
     p.add_argument(
         "--output",
         "-o",
-        type=up.file_io.Path,
+        type=up.expath.locate,
         help=(
             "Path to output directory. If not provided, the scratch directory is used."
         ),
@@ -86,7 +86,7 @@ def _main(args):
         results = engine.run_evaluation(
             model_factory,
             suites=suites,
-            path=up.file_io.Path(args.output) if args.output is not None else None,
+            path=up.expath.locate(args.output) if args.output is not None else None,
         )
         _logger.info(
             "Evaluation results: \n%s", up.log.create_table(results, format="long")

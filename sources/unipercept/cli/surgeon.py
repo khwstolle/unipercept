@@ -25,14 +25,14 @@ Subcommand = create_subtemplate()
 
 
 def _read_weights(arg: str, *, raw: bool = True) -> dict[str, torch.Tensor]:
-    path = up.file_io.Path(arg)
+    path = up.expath.locate(arg)
     match path.suffix.lower():
         case ".safetensors":
             obj = safetensors.torch.load_file(path, device="cpu")
         case ".pth":
             obj = torch.load(path, map_location="cpu")
         case ".pkl":
-            with up.file_io.Path.open(path, "rb") as fh:
+            with up.expath.locate.open(path, "rb") as fh:
                 obj = pickle.load(fh)
         case _:
             msg = f"Unsupported file format: {path}"
@@ -255,7 +255,7 @@ class ExtractCommand(Subcommand, name="extract"):
     @staticmethod
     @T.override
     def setup(prs: argparse.ArgumentParser):
-        prs.add_argument("--output", "-o", type=up.file_io.Path, help="output file")
+        prs.add_argument("--output", "-o", type=up.expath.locate, help="output file")
         prs.add_argument(
             "--insert",
             "-i",
@@ -355,7 +355,7 @@ class ExtractCommand(Subcommand, name="extract"):
         logger.info("Saved to %s", str(args.output))
 
 
-command_name = up.file_io.Path(__file__).stem
+command_name = up.expath.locate(__file__).stem
 command(command_name, help="model weight surgeon")(Subcommand)
 if __name__ == "__main__":
     command.root(command_name)

@@ -6,6 +6,7 @@ import typing as T
 
 import accelerate
 import accelerate.utils
+import expath
 import laco
 import torch
 import torch._dynamo
@@ -18,7 +19,6 @@ from accelerate import Accelerator as AcceleratorBase
 from accelerate.accelerator import TorchDynamoPlugin
 from accelerate.utils import DynamoBackend
 
-from unipercept import file_io
 from unipercept.engine._params import EngineParams, Precision
 from unipercept.log import create_table, logger
 
@@ -41,7 +41,7 @@ class Accelerator(AcceleratorBase):
     """
 
     @classmethod
-    def from_engine_params(cls, params: EngineParams, root: file_io.Path) -> T.Self:
+    def from_engine_params(cls, params: EngineParams, root: expath.locate) -> T.Self:
         """
         Builds the Accelerator object.
 

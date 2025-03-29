@@ -16,17 +16,15 @@ import tempfile
 import typing as T
 import warnings
 
+import expath
 import laco
 import matplotlib.pyplot as plt
 import PIL.Image as pil_image
 
-if T.TYPE_CHECKING:
-    from unipercept.types import Pathable
-
 _DISPLAY_HANDLERS: T.MutableMapping[str, T.Callable[[str], None]] = {}
 
 
-def show(image: pil_image.Image | plt.Figure | Pathable) -> None:
+def show(image: pil_image.Image | plt.Figure | expath.PathType) -> None:
     """
     Show an image over the terminal.
 
@@ -35,7 +33,6 @@ def show(image: pil_image.Image | plt.Figure | Pathable) -> None:
     image : PIL.Image
         The image to show.
     """
-    from unipercept.file_io import Path
 
     if isinstance(image, plt.Figure):
         image.canvas.draw()
@@ -48,7 +45,7 @@ def show(image: pil_image.Image | plt.Figure | Pathable) -> None:
             return show(f.name)
 
     if not isinstance(image, str):
-        image = str(Path(image))
+        image = str(expath.locate(image))
 
     handler_key = laco.get_env(
         str, "UP_RENDER_TERMINAL_HANDLER", default=next(iter(_DISPLAY_HANDLERS.keys()))

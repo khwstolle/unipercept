@@ -12,10 +12,10 @@ import re
 import typing as T
 from pathlib import Path
 
+import expath
 import typing_extensions as TX
 from tqdm import tqdm
 
-from unipercept import file_io
 from unipercept.data.pseudolabeler import PseudoGenerator
 from unipercept.data.sets.cityscapes import get_info
 
@@ -74,7 +74,7 @@ class KITTI360Dataset(
     PerceptionDataset, info=F.partial(get_info, depth_max=80, fps=15), id="kitti-360"
 ):
     split: T.Literal["train", "val"]
-    root: str = "//datasets/kitti-360"
+    root: str = "//unipercept/datasets/kitti-360"
 
     @classmethod
     @TX.override
@@ -85,7 +85,7 @@ class KITTI360Dataset(
 
     @property
     def root_path(self) -> Path:
-        return file_io.Path(self.root)
+        return expath.locate(self.root)
 
     def _discover_files(self) -> T.Iterable[FileID]:
         """

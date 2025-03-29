@@ -2,8 +2,6 @@
 Commmon utilities for working with strings.
 """
 
-from __future__ import annotations
-
 import re
 
 __all__ = ["convert_word_separator", "to_snake_case", "to_kebab_case"]

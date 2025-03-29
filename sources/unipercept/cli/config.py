@@ -2,9 +2,10 @@ import argparse
 import sys
 import typing as T
 
+import laco
+
 from unipercept.cli._command import command
 from unipercept.cli._config import add_config_args
-from unipercept.config import lazy
 
 from ._utils import create_subtemplate
 
@@ -51,10 +52,8 @@ class CatSubcommand(Subcommand, name="cat"):
             res = json.dumps(out, indent=4, ensure_ascii=False)
             print(res, file=sys.stdout, flush=True)
         elif fmt == "yaml":
-            config_yaml = lazy.dump_config(args.config)
+            config_yaml = laco.dump(args.config)
             print(config_yaml, file=sys.stdout, flush=True)
-        elif fmt == "python":
-            config_yaml = lazy.yaml
         else:
             print(f"Unknown format: {fmt}", file=sys.stderr)
 

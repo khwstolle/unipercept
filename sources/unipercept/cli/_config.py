@@ -5,13 +5,13 @@ import enum
 import os
 import typing as T
 
+import expath
 import pandas as pd
 import torch
 from bullet import Bullet
 from hydra.core.override_parser.overrides_parser import OverridesParser
 from omegaconf import DictConfig, OmegaConf
 
-from unipercept import file_io
 from unipercept._api_config import read_config
 from unipercept.log import create_table, logger
 
@@ -126,9 +126,9 @@ class ConfigLoad(argparse.Action):
 
         match choice:
             case ConfigSource.TEMPLATES:
-                configs_root = file_io.Path("configs://")
+                configs_root = expath.locate("configs://")
             case ConfigSource.CHECKPOINTS:
-                configs_root = file_io.Path("//output/")
+                configs_root = expath.locate("//unipercept/output/")
             case _:
                 msg = f"Invalid choice: {action}"
                 raise ValueError(msg)

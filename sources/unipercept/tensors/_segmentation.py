@@ -7,17 +7,18 @@ Implements mask tensors for semantic and instance segmentation maps, and their
 """
 
 import enum as E
+import torchvision.io
 import typing as T
 
+import expath
 import PIL.Image as pil_image
 import safetensors.torch as safetensors
 import torch
-
-from unipercept import file_io
+from typing_extensions import deprecated
 from unipercept.data.types.coco import COCOResultPanopticSegment
 from unipercept.tensors.helpers import write_png_l16, write_png_rgb
 from unipercept.tensors.registry import pixel_maps
-from unipercept.types import Pathable, Tensor
+from unipercept.types import Tensor
 
 from ._torchvision import MaskTensor
 
@@ -63,12 +64,12 @@ class PanopticTensor(MaskTensor):
 
     @classmethod
     @torch.no_grad()
-    def read(cls, path: Pathable, **meta_kwds) -> T.Self:
+    def read(cls, path: expath.PathType, **meta_kwds) -> T.Self:
         return load_panoptic(path, **meta_kwds).as_subclass(cls)
 
     def save(
         self,
-        path: Pathable,
+        path: expath.PathType,
         *,
         format: PanopticFormat | str | None = None,
         **meta_kwds,
@@ -470,26 +471,36 @@ class PanopticTensor(MaskTensor):
 PanopticTensorLike: T.TypeAlias = PanopticTensor | Tensor
 
 
-def load_panoptic(path: Pathable, /, **meta_kwds) -> PanopticTensor:
+def load_panoptic(input: expath.PathType | Tensor, /, **meta_kwds) -> PanopticTensor:
     """Read a panoptic map from a file."""
     from .helpers import get_kwd, read_pixels
 
     data_format = get_kwd(meta_kwds, "format", PanopticFormat)
-    path = str(file_io.Path(path))
 
     match data_format:
         case PanopticFormat.SAFETENSORS:
-            labels = safetensors.load_file(path)["data"].as_subclass(PanopticTensor)
+            if isinstance(input, torch.Tensor):
+                msg = "Expected a path to a file, not a tensor."
+                raise TypeError(msg)
+            input = str(expath.locate(input))
+            labels = safetensors.load_file(input)["data"].as_subclass(PanopticTensor)
         case PanopticFormat.TORCH:
-            labels = torch.load(path, map_location=torch.device("cpu")).as_subclass(
-                PanopticTensor
-            )
+            if isinstance(input, torch.Tensor):
+                msg = "Expected a path to a file, not a tensor."
+                raise TypeError(msg)
+            with expath.open(input, "rb") as fh:
+                labels = torch.load(fh, map_location=torch.device("cpu"))
+            labels = labels.as_subclass(PanopticTensor)
             assert labels is not None
             assert isinstance(labels, (PanopticTensor, torch.Tensor)), type(labels)
         case PanopticFormat.CITYSCAPES:
             divisor = 1000
             void_id = 255
-            img = read_pixels(path, color=True)
+            if not isinstance(input, torch.Tensor):
+                input = str(expath.locate(input))
+            img = torchvision.io.decode_image(
+                input, mode=torchvision.io.ImageReadMode.RGB
+            )
             assert img.ndim == 3, f"Expected 3D tensor, got {img.ndim}D tensor"
 
             map_ = (
@@ -505,7 +516,11 @@ def load_panoptic(path: Pathable, /, **meta_kwds) -> PanopticTensor:
             divisor = 1000
             void_id = 255
 
-            img = read_pixels(path, color=False)
+            if not isinstance(input, torch.Tensor):
+                input = str(expath.locate(input))
+            img = torchvision.io.decode_image(
+                input, mode=torchvision.io.ImageReadMode.GRAY
+            )
             assert img.ndim == 2, f"Expected 2D tensor, got {img.ndim}D tensor"
 
             has_instance = img >= divisor
@@ -519,7 +534,11 @@ def load_panoptic(path: Pathable, /, **meta_kwds) -> PanopticTensor:
             divisor = 1000
             void_id = 32
 
-            img = read_pixels(path, color=False)
+            if not isinstance(input, torch.Tensor):
+                input = str(expath.locate(input))
+            img = torchvision.io.decode_image(
+                input, mode=torchvision.io.ImageReadMode.GRAY
+            )
             assert img.ndim == 2, f"Expected 2D tensor, got {img.ndim}D tensor"
 
             has_instance = img >= divisor
@@ -530,7 +549,13 @@ def load_panoptic(path: Pathable, /, **meta_kwds) -> PanopticTensor:
 
             labels = PanopticTensor.from_parts(sem, ids)
         case PanopticFormat.KITTI:
-            img = read_pixels(path, color=True)
+            if not isinstance(input, torch.Tensor):
+                input = str(expath.locate(input))
+            img = torchvision.io.decode_image(
+                input, mode=torchvision.io.ImageReadMode.RGB
+            )
+            assert img.ndim == 3, f"Expected 3D tensor, got {img.ndim}D tensor"
+
             sem = img[:, :, 0]  # R-channel
             ids = torch.add(
                 img[:, :, 1] * _BYTE_OFFSET,  # G channel
@@ -541,18 +566,13 @@ def load_panoptic(path: Pathable, /, **meta_kwds) -> PanopticTensor:
         case PanopticFormat.VISTAS:
             divisor = 1000
 
-            img = read_pixels(path, color=False)
+            if not isinstance(input, torch.Tensor):
+                input = str(expath.locate(input))
+            img = torchvision.io.decode_image(
+                input, mode=torchvision.io.ImageReadMode.GRAY_ALPHA
+            )
+            assert img.ndim == 2, f"Expected 2D tensor, got {img.ndim}D tensor"
             assert img.dtype == torch.int32, img.dtype
-
-            if img.ndim == 3:
-                assert img.shape[2] == 3, f"Expected 3 channels, got {img.shape[2]}"
-                assert torch.all(
-                    img[:, :, 0] == img[:, :, 1]
-                ), "Expected all channels to be equal"
-                assert torch.all(
-                    img[:, :, 0] == img[:, :, 2]
-                ), "Expected all channels to be equal"
-                img = img[:, :, 0]
 
             labels = PanopticTensor.from_combined(img, divisor)
         case PanopticFormat.WILD_DASH:
@@ -561,7 +581,12 @@ def load_panoptic(path: Pathable, /, **meta_kwds) -> PanopticTensor:
             divisor = int(1e8)
             void_id = 255
 
-            img = read_pixels(path, color=True)
+            if not isinstance(input, torch.Tensor):
+                input = str(expath.locate(input))
+            img = torchvision.io.decode_image(
+                input, mode=torchvision.io.ImageReadMode.RGB
+            )
+            assert img.ndim == 3, f"Expected 3D tensor, got {img.ndim}D tensor"
             img = (
                 img[:, :, 0].to(torch.long) * _BYTE_OFFSET * _BYTE_OFFSET
                 + img[:, :, 1].to(torch.long) * _BYTE_OFFSET
@@ -581,14 +606,14 @@ def load_panoptic(path: Pathable, /, **meta_kwds) -> PanopticTensor:
                 translation=translations,
             )
         case _:
-            msg = f"Could not read labels from {path!r} ({data_format=})"
+            msg = f"Could not read labels from {input!r} ({data_format=})"
             raise NotImplementedError(msg)
 
     assert labels.ndim == 2, f"Expected 2D tensor, got {labels.ndim}D tensor"
 
-    assert (
-        labels is not None
-    ), f"No labels were read from '{path}' (format: {data_format})"
+    assert labels is not None, (
+        f"No labels were read from '{input}' (format: {data_format})"
+    )
 
     if len(meta_kwds) > 0:
         raise TypeError(f"Unexpected keyword arguments: {tuple(meta_kwds.keys())}")
@@ -599,7 +624,7 @@ def load_panoptic(path: Pathable, /, **meta_kwds) -> PanopticTensor:
 
 def save_panoptic(
     self: Tensor,
-    path: Pathable,
+    path: expath.PathType,
     *,
     format: PanopticFormat | str | None = None,
     **kwargs,
@@ -611,7 +636,7 @@ def save_panoptic(
         msg = f"Expected 2D tensor, got {self.ndim}D tensor ({self.shape})"
         raise ValueError(msg)
 
-    path = file_io.Path(path)
+    path = expath.locate(path)
 
     # Check whether the format can be inferred from the filename
     if format is None:
@@ -630,9 +655,9 @@ def save_panoptic(
     # Save the labels
     match PanopticFormat(format):
         case PanopticFormat.SAFETENSORS:
-            assert (
-                path.suffix.lower() == ".safetensors"
-            ), f"Expected SAFETENSORS file, got {path}"
+            assert path.suffix.lower() == ".safetensors", (
+                f"Expected SAFETENSORS file, got {path}"
+            )
             safetensors.save_file({"data": torch.as_tensor(self)}, path)
         case PanopticFormat.TORCH:
             assert path.suffix.lower() in (
@@ -647,9 +672,9 @@ def save_panoptic(
             void_id = kwargs.get("void_id", 64)
             max_ins = kwargs.get("divisor", 1000)
 
-            assert not torch.any(
-                sem == void_id
-            ), f"Found void ID in semantic map, {void_id=}"
+            assert not torch.any(sem == void_id), (
+                f"Found void ID in semantic map, {void_id=}"
+            )
             assert torch.all(ins < max_ins), f"Found instance ID >= {max_ins=}"
 
             pan = sem.where(sem >= 0, void_id) * max_ins + ins

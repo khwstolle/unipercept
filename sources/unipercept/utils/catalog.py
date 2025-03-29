@@ -7,7 +7,6 @@ from functools import partial
 from importlib.metadata import entry_points
 
 import regex as re
-
 from unipercept.utils.registry import IndexedRegistry
 
 __all__ = ["Catalog", "CatalogFromPackageMetadata"]

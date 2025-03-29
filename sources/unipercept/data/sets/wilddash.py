@@ -9,9 +9,8 @@ import json
 import typing as T
 from datetime import datetime
 
+import expath
 import typing_extensions as TX
-
-from unipercept import file_io
 
 from . import Metadata, PerceptionDataset
 
@@ -304,7 +303,7 @@ def get_info():
 class WildDashDataset(PerceptionDataset, id="wilddash", info=get_info):
     """WildDash dataset."""
 
-    root = "//datasets/wilddash"
+    root = "//unipercept/datasets/wilddash"
     split: T.Literal["train", "val"]
 
     @classmethod
@@ -315,13 +314,13 @@ class WildDashDataset(PerceptionDataset, id="wilddash", info=get_info):
         }
 
     def _build_manifest(self) -> up.data.types.Manifest:
-        pan_path = file_io.Path(self.root) / "panoptic.json"
+        pan_path = expath.locate(self.root) / "panoptic.json"
         with open(pan_path) as fh:
             pan: up.data.types.COCOManifest = json.load(fh)
 
         ann_map = {ann["file_name"]: ann["segments_info"] for ann in pan["annotations"]}
 
-        root_path = file_io.Path(self.root)
+        root_path = expath.locate(self.root)
 
         src_image = root_path / self.split / "images"
         src_panseg = root_path / "panoptic"

@@ -14,10 +14,10 @@ See Also
 
 from typing import override
 
+import expath
 import webdataset as wds
 
 from unipercept.data.sets.builder import Dataset, DatasetBuilder
-from unipercept.file_io import Path, Pathable
 
 
 class WebDatasetManifest:
@@ -25,8 +25,8 @@ class WebDatasetManifest:
     Represents the manifest of a WebDataset.
     """
 
-    def __init__(self, path: Pathable):
-        self.path = Path(path)
+    def __init__(self, path: expath.PathType):
+        self.path = expath.locate(path)
 
 
 class WebDatasetBuilder[Config, Manifest, Metadata](

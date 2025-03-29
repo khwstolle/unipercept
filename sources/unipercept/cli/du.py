@@ -9,14 +9,13 @@ from __future__ import annotations
 
 from sys import stdout
 
+import expath
 from tabulate import tabulate
 from tqdm import tqdm
 
-from unipercept import file_io
-
 from ._command import command
 
-DEFAULT_PREFIXES = ["//output/", "//cache/", "//scratch/", "//datasets/"]
+DEFAULT_PREFIXES = ["//unipercept/output/", "//unipercept/cache", "//unipercept/scratch/"]
 
 
 @command("du")
@@ -76,7 +75,7 @@ def _to_readable(B: float) -> str:
 def _discover_stats(
     path_str: str, human_readable: bool
 ) -> T.Tuple[str, str, str, str, str]:
-    path = file_io.Path(path_str)
+    path = expath.locate(path_str)
     total_files: int = 0
     total_dirs: int = 0
     total_size: int = 0

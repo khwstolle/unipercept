@@ -4,10 +4,15 @@ Model profiling entry point.
 
 import argparse
 import inspect
+import pathlib
 import sys
 import typing as T
 from collections import defaultdict
 
+import create_dataset
+import create_engine
+import create_model
+import expath
 import pandas as pd
 import regex as re
 import torch
@@ -19,7 +24,6 @@ from tensordict import TensorDictBase
 from torch import nn
 from tqdm import tqdm
 
-from unipercept import create_dataset, create_engine, create_model, file_io
 from unipercept.cli._command import command, logger
 from unipercept.cli._config import add_config_args
 from unipercept.log import create_table, logger
@@ -74,7 +78,7 @@ def _add_loader_type_args(
     # subparser.add_argument("path", nargs="*", type=str)
 
 
-def _find_session_path(config: T.Any) -> file_io.Path:
+def _find_session_path(config: T.Any) -> pathlib.Path:
     """
     Find the path to the session file.
     """
@@ -82,9 +86,9 @@ def _find_session_path(config: T.Any) -> file_io.Path:
     proj_name = config.ENGINE.params.project_name
 
     try:
-        path = file_io.Path(f"//output/{proj_name}/{config.session_id}/profile")
+        path = expath.locate(f"//unipercept/output/{proj_name}/{config.session_id}/profile")
     except (KeyError, ConfigAttributeError):
-        path = file_io.Path(f"//output/profile/{proj_name}/{get_timestamp()}/profile")
+        path = expath.locate(f"//unipercept/output/profile/{proj_name}/{get_timestamp()}/profile")
         logger.warning("No session file found in config, using default path: %s", path)
 
     path.mkdir(exist_ok=True, parents=True)
@@ -416,7 +420,7 @@ class MemorySubcommand(Subcommand, name="memory"):
         handler,
         *,
         iterations: int,
-        path_export: file_io.Path,
+        path_export: expath.locate,
     ) -> None:
         model = model.cuda()
 
@@ -465,7 +469,7 @@ class TraceSubcommand(Subcommand, name="trace"):
         handler,
         *,
         iterations: int,
-        path_export: file_io.Path,
+        path_export: expath.locate,
     ) -> None:
         logger.info("Profiling model")
 

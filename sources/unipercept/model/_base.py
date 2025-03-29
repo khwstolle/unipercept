@@ -7,10 +7,10 @@ import copy
 import typing as T
 
 import torch
+from laco import apply_overrides, instantiate
 from tensordict import LazyStackedTensorDict, TensorDictBase
 from torch import Tensor, nn
 
-from laco import apply_overrides, instantiate
 from unipercept.log import logger
 from unipercept.types import Device, Pathable
 

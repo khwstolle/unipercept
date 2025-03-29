@@ -5,13 +5,16 @@ Depth tensors
 Provides support for depth tensors, e.g. disparity maps, depth maps, etc.
 """
 
+import io
 import enum as E
 import json
 import typing as T
 
 import PIL.Image as pil_image
 import safetensors.torch as safetensors
+import torchvision.io
 import torch
+import expath
 from einops import rearrange
 from tensordict import MemoryMappedTensor
 from torch.nn.functional import interpolate
@@ -95,11 +98,11 @@ class DepthTensor(Mask):
 def save_depthmap(
     data: Tensor, path: Pathable, format: DepthFormat | str | None = None
 ) -> None:
-    from unipercept import file_io
+    import expath
 
     data = data.detach().cpu()
 
-    path = file_io.Path(path)
+    path = expath.locate(path)
     if format is None:
         match path.suffix.lower():
             case ".tiff":
@@ -142,41 +145,61 @@ def save_depthmap(
 
 
 def load_depth(
-    path: Pathable,
+    input: expath.PathType | Tensor,
     dtype: torch.dtype = DEFAULT_DEPTH_DTYPE,
     **meta_kwds: T.Any,
 ) -> DepthTensor:
     import numpy as np
 
-    from unipercept import file_io
-
-    path = file_io.get_local_path(str(path))
+    if not isinstance(input, torch.Tensor):
+        input = str(expath.locate(input))
     # Switch by depth format
     format = get_kwd(meta_kwds, "format", DepthFormat | str)
     match DepthFormat(format):  # type: ignore
         case DepthFormat.TIFF:
-            m = pil_image.open(path)
+            if isinstance(input, torch.Tensor):
+                with io.BytesIO(input.numpy().tobytes()) as buffer:
+                    m = pil_image.open(buffer)
+            else:
+                m = pil_image.open(expath.locate(input))
             if m.mode != "F":
                 msg = f"Expected image format 'F'; Got {m.format!r}"
                 raise ValueError(msg)
             m = torch.from_numpy(np.array(m, copy=True))
         case DepthFormat.DEPTH_INT16:
-            m = read_pixels(path, color=False) / float(2**8)
+            if not isinstance(input, torch.Tensor):
+                input = str(expath.locate(input))
+            m = torchvision.io.read_image(
+                input, mode=torchvision.io.ImageReadMode.UNCHANGED
+            )
+            assert m.dtype == torch.uint16, m.dtype
+            m = m / float(2**8)
         case DepthFormat.DISPARITY_INT16:
-            m = load_depth_from_disparity(path, **meta_kwds)
+            m = load_depth_from_disparity(input, **meta_kwds)
         case DepthFormat.SAFETENSORS:
-            m = safetensors.load_file(path)["data"]
+            if isinstance(input, torch.Tensor):
+                msg = "Expected a path to a file, not a tensor."
+                raise TypeError(msg)
+            input = str(expath.locate(input))
+            m = safetensors.load_file(input)["data"]
         case DepthFormat.TORCH:
-            m = torch.load(path, map_location="cpu").squeeze_(0).squeeze_(0)
+            if isinstance(input, torch.Tensor):
+                msg = "Expected a path to a file, not a tensor."
+                raise TypeError(msg)
+            input = str(expath.locate(input))
+            m = torch.load(input, map_location="cpu").squeeze_(0).squeeze_(0)
         case DepthFormat.MEMMAP:
-            path = file_io.Path(path)
-            tensor_name = path.stem
-            path_meta = path.parent / "meta.json"
+            if isinstance(input, torch.Tensor):
+                msg = "Expected a path to a file, not a tensor."
+                raise TypeError(msg)
+            input = expath.locate(input)
+            tensor_name = input.stem
+            path_meta = input.parent / "meta.json"
             with path_meta.open("r") as f:
                 meta = json.load(f)[tensor_name]
 
             m = MemoryMappedTensor.from_filename(
-                filename=path,
+                filename=input,
                 dtype=locate_object(meta["dtype"]),
                 shape=torch.Size(meta["shape"]),
             ).contiguous()

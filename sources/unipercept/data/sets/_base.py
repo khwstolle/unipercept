@@ -41,13 +41,13 @@ __all__ = [
     "catalog",
 ]
 
-PerceptionDataqueue: T.TypeAlias = _Dataqueue["QueueItem"]
-PerceptionDatapipe: T.TypeAlias = _Datapipe[
+type PerceptionDataqueue = _Dataqueue["QueueItem"]
+type PerceptionDatapipe = _Datapipe[
     "QueueItem",
     "InputData",
     "Metadata",
 ]
-PerceptionGatherer: T.TypeAlias = T.Callable[[Manifest], tuple[str, QueueItem]]
+type PerceptionGatherer = T.Callable[[Manifest], tuple[str, QueueItem]]
 
 catalog: CatalogFromPackageMetadata[PerceptionDataset, Metadata] = (
     CatalogFromPackageMetadata(group="unipercept.datasets")

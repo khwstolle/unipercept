@@ -3,11 +3,11 @@ This file contains the base class for writers.
 """
 
 import abc
+import pathlib
 import typing as T
 
+import expath
 from tensordict import TensorDict, TensorDictBase
-
-from unipercept import file_io
 
 __all__ = ["DataWriter"]
 
@@ -20,7 +20,7 @@ class DataWriter(metaclass=abc.ABCMeta):
     def __init__(
         self,
         *,
-        path: file_io.Pathable,
+        path: expath.PathType,
         total_size: int,
         local_size: int,
         local_offset: int,
@@ -33,13 +33,13 @@ class DataWriter(metaclass=abc.ABCMeta):
         size : int
             The size of the first dimension of the results.
         """
-        self._path = file_io.Path(path)
+        self._path = expath.locate(path)
         self._total_size = total_size
         self._local_size = local_size
         self._local_offset = local_offset
 
     @property
-    def path(self) -> file_io.Path:
+    def path(self) -> pathlib.Path:
         return self._path
 
     @property

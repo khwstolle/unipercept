@@ -11,11 +11,10 @@ import tempfile
 import typing as T
 from contextlib import contextmanager
 
+import expath
 import PIL.Image as pil_image
 
-from unipercept.file_io import Path
 from unipercept.log import logger
-from unipercept.types import Pathable
 
 __all__ = ["video_writer"]
 
@@ -24,8 +23,8 @@ _IgnoreExceptionsType: T.TypeAlias = type[Exception] | T.Callable[[Exception], b
 
 @contextmanager
 def video_writer(
-    out_video: Pathable,
-    out_frames: Pathable | None = None,
+    out_video: expath.PathType,
+    out_frames: expath.PathType | None = None,
     *,
     fps: int = 30,
     overwrite: bool = False,
@@ -36,8 +35,8 @@ def video_writer(
     encoding them into a video file using ``ffmpeg`` commands.
     """
 
-    def _parse_output_path(out: Pathable) -> str:
-        out = Path(out)
+    def _parse_output_path(out: expath.PathType) -> str:
+        out = expath.locate(out)
         if out.is_dir():
             shutil.rmtree(out)
         if out.is_file():
@@ -53,7 +52,7 @@ def video_writer(
         return "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
 
     def _get_ffmpeg_cmd(fps: int, dir_frames: str, out: str) -> tuple[str, ...]:
-        frame_glob = Path(dir_frames) / "*.png"
+        frame_glob = expath.locate(dir_frames) / "*.png"
         return (
             _get_ffmpeg_path(),
             f"-framerate {fps}",
@@ -66,7 +65,7 @@ def video_writer(
 
     def _save_image(im: pil_image.Image, *, dir_frames: str):
         next_frame = len(os.listdir(dir_frames))
-        im.save(Path(dir_frames) / f"frame_{next_frame:010d}.png")
+        im.save(expath.locate(dir_frames) / f"frame_{next_frame:010d}.png")
 
     def _should_ignore(e: Exception) -> bool:
         if isinstance(ignore_exceptions, bool):
@@ -82,10 +81,10 @@ def video_writer(
         )
         raise TypeError(msg)
 
-    out_video = Path(out_video)
+    out_video = expath.locate(out_video)
     assert out_video.suffix == ".mp4", f"Expected .mp4 extension, got {out_video!r}."
 
-    out_frames = Path(out_frames) if out_frames else None
+    out_frames = expath.locate(out_frames) if out_frames else None
 
     write_video = isinstance(ignore_exceptions, bool) and ignore_exceptions or False
 
@@ -114,10 +113,10 @@ def video_writer(
 
         # Copy all frames to the output directory if one was provided
         if out_frames:
-            out_frames = Path(out_frames)
+            out_frames = expath.locate(out_frames)
             out_frames.mkdir(parents=True, exist_ok=True)
             for frame in os.listdir(tmp_frames):
-                shutil.copy(Path(tmp_frames) / frame, out_frames)
+                shutil.copy(expath.locate(tmp_frames) / frame, out_frames)
             logger.debug("Frames were copied to %s.", out_frames)
         else:
             logger.debug("Individual frames were discarded, no path provided.")
