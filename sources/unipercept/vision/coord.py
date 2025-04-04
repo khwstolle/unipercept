@@ -1,8 +1,10 @@
 from __future__ import annotations
-import typing
+
 import enum as E
-import torch.fx
+import typing
+
 import torch
+import torch.fx
 
 from unipercept.types import Device, DType, Size, Tensor
 

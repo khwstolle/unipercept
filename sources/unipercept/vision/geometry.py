@@ -9,12 +9,17 @@ See Also
 
 import enum as E
 import typing
+
 import torch
 import torch.fx
 from torch import nn
 
 from unipercept.types import Device, DType, Size, Tensor
-from unipercept.vision.coord import GridMode, generate_coord_grid, generate_coord_grid_as, _grid_from_indices
+from unipercept.vision.coord import (
+    GridMode,
+    generate_coord_grid,
+    generate_coord_grid_as,
+)
 
 
 class AxesConvention(E.StrEnum):

@@ -145,6 +145,7 @@ class MaskedTrigonometricEmbed2d(TrigonometricEmbedBase):
         )
         return pe_2d.expand((x.size(0), -1, -1, -1))
 
+
 @torch.fx.wrap  # type: ignore[return-type]
 @torch.no_grad()
 def trigonometric_embed_3d(
@@ -290,7 +291,7 @@ def fourier_embed_2d(
     else:
         s = torch.linspace(1.0, max_freq / 2, num_bands, device=device, dtype=dtype)
     s = s * torch.pi
-    x = torch.einsum(x, s, "b c h w, s -> b c s h w").reshape(B, -1, H, W)
+    x = torch.einsum("bchw,s->bcshw", x, s).reshape(B, -1, H, W)
     if use_cos:
         x = torch.cat([x.sin(), x.cos()], dim=1)
     else:
