@@ -6,7 +6,7 @@ from unipercept.utils.tensor import map_values
 
 
 @pytest.mark.parametrize(
-    "tensor, translation",
+    ("tensor, translation"),
     [
         (
             torch.randint(0, 256, (16, 224, 224, 3)),

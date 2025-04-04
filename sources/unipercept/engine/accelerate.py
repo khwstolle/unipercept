@@ -2,11 +2,11 @@
 Integration with the ``accelerate`` package.
 """
 
+import pathlib
 import typing as T
 
 import accelerate
 import accelerate.utils
-import expath
 import laco
 import torch
 import torch._dynamo
@@ -41,7 +41,7 @@ class Accelerator(AcceleratorBase):
     """
 
     @classmethod
-    def from_engine_params(cls, params: EngineParams, root: expath.locate) -> T.Self:
+    def from_engine_params(cls, params: EngineParams, root: pathlib.Path) -> T.Self:
         """
         Builds the Accelerator object.
 

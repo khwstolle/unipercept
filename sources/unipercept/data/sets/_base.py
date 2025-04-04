@@ -201,7 +201,7 @@ class PerceptionDataset(
             times=times,
             images=multi_read(tensors.load_image, "image", no_entries="error")(sources),
             segmentations=labels,
-            depths=multi_read(tensors.load_depth, "depth", no_entries="none")(sources),
+            depths=multi_read(tensors.load_depthmap, "depth", no_entries="none")(sources),
             batch_size=[num_caps],
         )
 

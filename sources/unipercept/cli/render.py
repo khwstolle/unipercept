@@ -99,7 +99,7 @@ class DepthSubcommand(Subcommand, name="depth"):
         if load_kwargs is None:
             load_kwargs = {}
 
-        tensor = tensors.load_depth(input_file, **load_kwargs)
+        tensor = tensors.load_depthmap(input_file, **load_kwargs)
         result = render.draw_image_depth(tensor, **render_kwargs)
 
         if not dry_run:

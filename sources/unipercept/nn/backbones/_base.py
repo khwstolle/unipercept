@@ -26,7 +26,7 @@ __all__ = [
 # ---------------- #
 
 
-class BackboneFeatureInfo(T.NamedTuple):
+class BackboneFeatureInfo(T.TypedDict):
     """
     Information about a feature.
 
@@ -120,6 +120,7 @@ def check_feature_info(info: T.Any, *, raises=True) -> T.TypeGuard[BackboneFeatu
             msg = f"Invalid type for {info=} ({type(info)})"
             raise TypeError(msg)
         return False
+    info = T.cast(BackboneFeatures, info)
     if len(info) == 0:
         if raises:
             msg = f"Empty {info=}"
@@ -137,19 +138,14 @@ def check_feature_info(info: T.Any, *, raises=True) -> T.TypeGuard[BackboneFeatu
                 msg = f"Key {k!r} contains illegal characters from {_ILLEGAL_FEATURE_CHARS.pattern}.\n\n{info=}"
                 raise ValueError(msg)
             return False
-        if not isinstance(v, BackboneFeatureInfo):
+        if (channels := v["channels"]) <= 1:
             if raises:
-                msg = f"Invalid type for {v=} ({type(v)}), expected {BackboneFeatureInfo}.\n\n{info=}"
-                raise TypeError(msg)
-            return False
-        if v.channels <= 1:
-            if raises:
-                msg = f"{v.channels=} <= 1!\n\n{info=}"
+                msg = f"{channels=} <= 1!\n\n{info=}"
                 raise ValueError(msg)
             return False
-        if v.stride <= 1:
+        if (stride := v["stride"]) <= 1:
             if raises:
-                msg = f"Invalid value for {v.stride=} <= 1\n\n{info=}"
+                msg = f"Invalid value for {stride=} <= 1\n\n{info=}"
                 raise ValueError(msg)
             return False
     return True

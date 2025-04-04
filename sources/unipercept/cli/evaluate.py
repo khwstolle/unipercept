@@ -5,11 +5,16 @@ from __future__ import annotations
 import argparse
 import os
 
+import expath
+
 import unipercept as up
+from unipercept import create_engine, create_model_factory
 from unipercept.cli._command import command
 from unipercept.cli._config import ConfigFileContentType as config_t
+from unipercept.log import get_logger
+from unipercept.state import barrier
 
-_logger = up.log.get_logger()
+_logger = get_logger()
 
 
 KEY_SESSION_ID = "session_id"
@@ -30,7 +35,7 @@ def evaluate(p: argparse.ArgumentParser):
     p.add_argument(
         "--output",
         "-o",
-        type=up.expath.locate,
+        type=expath.locate,
         help=(
             "Path to output directory. If not provided, the scratch directory is used."
         ),
@@ -63,13 +68,13 @@ def _step(args) -> config_t:
         _logger.info("Disabling JIT compilation")
         os.environ["PYTORCH_JIT"] = "0"
 
-    up.state.barrier()  # Ensure the config file is not created before all processes validate its existence
+    barrier()  # Ensure the config file is not created before all processes validate its existence
     return args.config
 
 
 def _main(args):
     config = _step(args)
-    engine = up.create_engine(config)
+    engine = create_engine(config)
     if args.skip_inference:
         if not args.output or not args.output.is_dir():
             msg = (
@@ -79,14 +84,14 @@ def _main(args):
             raise ValueError(msg)
         model_factory = None
     else:
-        model_factory = up.create_model_factory(config, weights=args.weights or None)
+        model_factory = create_model_factory(config, weights=args.weights or None)
 
     suites = args.suite if args.suite is not None and len(args.suite) > 0 else None
     try:
         results = engine.run_evaluation(
             model_factory,
             suites=suites,
-            path=up.expath.locate(args.output) if args.output is not None else None,
+            path=expath.locate(args.output) if args.output is not None else None,
         )
         _logger.info(
             "Evaluation results: \n%s", up.log.create_table(results, format="long")

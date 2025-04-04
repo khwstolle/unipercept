@@ -8,12 +8,13 @@ See Also
 """
 
 import enum as E
-
+import typing
 import torch
+import torch.fx
 from torch import nn
 
 from unipercept.types import Device, DType, Size, Tensor
-from unipercept.vision.coord import GridMode, generate_coord_grid
+from unipercept.vision.coord import GridMode, generate_coord_grid, generate_coord_grid_as, _grid_from_indices
 
 
 class AxesConvention(E.StrEnum):
@@ -123,7 +124,9 @@ def convert_extrinsics(
     Examples
     --------
     >>> extrinsics = torch.eye(4)
-    >>> converted_extrinsics = convert_extrinsics(extrinsics, src=AxesConvention.ISO8855, tgt=AxesConvention.OPENCV)
+    >>> converted_extrinsics = convert_extrinsics(
+    ...     extrinsics, src=AxesConvention.ISO8855, tgt=AxesConvention.OPENCV
+    ... )
     >>> print(converted_extrinsics)
     tensor([[ 0.,  0.,  1.,  0.],
             [-1.,  0.,  0.,  0.],
@@ -174,7 +177,9 @@ def convert_points(
     Examples
     --------
     >>> points = torch.tensor([[1.0, 2.0, 3.0]])
-    >>> converted_points = convert_points(points, src=AxesConvention.ISO8855, tgt=AxesConvention.OPENCV)
+    >>> converted_points = convert_points(
+    ...     points, src=AxesConvention.ISO8855, tgt=AxesConvention.OPENCV
+    ... )
     >>> print(converted_points)
     tensor([[ 3., -1., -2.]])
     """
@@ -214,7 +219,9 @@ def extrinsics_from_parameters(
     --------
     >>> angles = [(0.0, 0.0, 0.0)]
     >>> translation = [(0.0, 0.0, 0.0)]
-    >>> extrinsics = extrinsics_from_parameters(angles, translation, convention=AxesConvention.ISO8855)
+    >>> extrinsics = extrinsics_from_parameters(
+    ...     angles, translation, convention=AxesConvention.ISO8855
+    ... )
     >>> print(extrinsics)
     tensor([[ 0.,  0.,  1.,  0.],
             [-1.,  0.,  0.,  0.],
@@ -280,7 +287,9 @@ def intrinsics_from_parameters(
     --------
     >>> focal_length = [(1000.0, 1000.0)]
     >>> principal_point = [(500.0, 500.0)]
-    >>> K = intrinsics_from_parameters(focal_length, principal_point, orthographic=False)
+    >>> K = intrinsics_from_parameters(
+    ...     focal_length, principal_point, orthographic=False
+    ... )
     >>> print(K)
     tensor([[1000.,    0.,  500.,    0.],
             [   0., 1000.,  500.,    0.],
@@ -334,9 +343,7 @@ def intrinsics_from_parameters(
     return K
 
 
-_DTYPE_INVERTIBLE = (torch.float32, torch.float64)
-
-
+# @torch.fx.wrap
 @torch.autocast("cuda", enabled=False)
 def unsafe_inverse(x: Tensor) -> Tensor:
     r"""
@@ -362,11 +369,8 @@ def unsafe_inverse(x: Tensor) -> Tensor:
             [0., 1., 0.],
             [0., 0., 1.]])
     """
-    dtype = x.dtype
-    if dtype not in _DTYPE_INVERTIBLE:
-        x = x.to(dtype=torch.float32)
-    x_inv = torch.linalg.inv_ex(x).inverse
-    return x_inv.to(dtype=dtype)
+    x_inv = typing.cast(Tensor, torch.linalg.inv_ex(x.float()).inverse)  # type: ignore[attr-defined]
+    return x_inv.type_as(x)
 
 
 def rad2deg(tensor: Tensor) -> Tensor:
@@ -1079,7 +1083,12 @@ def euler_from_quaternion(
 
     Examples
     --------
-    >>> w, x, y, z = torch.tensor(1.0), torch.tensor(0.0), torch.tensor(0.0), torch.tensor(0.0)
+    >>> w, x, y, z = (
+    ...     torch.tensor(1.0),
+    ...     torch.tensor(0.0),
+    ...     torch.tensor(0.0),
+    ...     torch.tensor(0.0),
+    ... )
     >>> roll, pitch, yaw = euler_from_quaternion(w, x, y, z)
     >>> print(roll, pitch, yaw)
     tensor(0.) tensor(0.) tensor(0.)
@@ -1264,7 +1273,9 @@ def normalize_pixel_coordinates3d(
     Examples
     --------
     >>> pixel_coordinates = torch.tensor([[0.0, 0.0, 0.0]])
-    >>> normalized_coordinates = normalize_pixel_coordinates3d(pixel_coordinates, 10, 100, 50)
+    >>> normalized_coordinates = normalize_pixel_coordinates3d(
+    ...     pixel_coordinates, 10, 100, 50
+    ... )
     >>> print(normalized_coordinates)
     tensor([[-1., -1., -1.]])
     """
@@ -1386,7 +1397,9 @@ def normalize_homography(
     >>> dst_pix_trans_src_pix = torch.eye(3)
     >>> dsize_src = (100, 100)
     >>> dsize_dst = (200, 200)
-    >>> normalized_homography = normalize_homography(dst_pix_trans_src_pix, dsize_src, dsize_dst)
+    >>> normalized_homography = normalize_homography(
+    ...     dst_pix_trans_src_pix, dsize_src, dsize_dst
+    ... )
     >>> print(normalized_homography)
     tensor([[ 2.0000,  0.0000, -1.0000],
             [ 0.0000,  2.0000, -1.0000],
@@ -1572,7 +1585,9 @@ def denormalize_homography(
     >>> dst_pix_trans_src_pix = torch.eye(3)
     >>> dsize_src = (100, 100)
     >>> dsize_dst = (200, 200)
-    >>> denormalized_homography = denormalize_homography(dst_pix_trans_src_pix, dsize_src, dsize_dst)
+    >>> denormalized_homography = denormalize_homography(
+    ...     dst_pix_trans_src_pix, dsize_src, dsize_dst
+    ... )
     >>> print(denormalized_homography)
     tensor([[ 0.5000,  0.0000,  0.5000],
             [ 0.0000,  0.5000,  0.5000],
@@ -1638,7 +1653,9 @@ def normalize_homography3d(
     >>> dst_pix_trans_src_pix = torch.eye(4)
     >>> dsize_src = (10, 100, 100)
     >>> dsize_dst = (20, 200, 200)
-    >>> normalized_homography = normalize_homography3d(dst_pix_trans_src_pix, dsize_src, dsize_dst)
+    >>> normalized_homography = normalize_homography3d(
+    ...     dst_pix_trans_src_pix, dsize_src, dsize_dst
+    ... )
     >>> print(normalized_homography)
     tensor([[ 2.0000,  0.0000,  0.0000, -1.0000],
             [ 0.0000,  2.0000,  0.0000, -1.0000],
@@ -1696,7 +1713,9 @@ def normalize_points_with_intrinsics(point_2d: Tensor, camera_matrix: Tensor) ->
     Examples
     --------
     >>> point_2d = torch.tensor([[100.0, 200.0]])
-    >>> camera_matrix = torch.tensor([[1000.0, 0.0, 500.0], [0.0, 1000.0, 500.0], [0.0, 0.0, 1.0]])
+    >>> camera_matrix = torch.tensor(
+    ...     [[1000.0, 0.0, 500.0], [0.0, 1000.0, 500.0], [0.0, 0.0, 1.0]]
+    ... )
     >>> normalized_points = normalize_points_with_intrinsics(point_2d, camera_matrix)
     >>> print(normalized_points)
     tensor([[-0.4000, -0.3000]])
@@ -1745,8 +1764,12 @@ def denormalize_points_with_intrinsics(
     Examples
     --------
     >>> point_2d_norm = torch.tensor([[-0.4000, -0.3000]])
-    >>> camera_matrix = torch.tensor([[1000.0, 0.0, 500.0], [0.0, 1000.0, 500.0], [0.0, 0.0, 1.0]])
-    >>> denormalized_points = denormalize_points_with_intrinsics(point_2d_norm, camera_matrix)
+    >>> camera_matrix = torch.tensor(
+    ...     [[1000.0, 0.0, 500.0], [0.0, 1000.0, 500.0], [0.0, 0.0, 1.0]]
+    ... )
+    >>> denormalized_points = denormalize_points_with_intrinsics(
+    ...     point_2d_norm, camera_matrix
+    ... )
     >>> print(denormalized_points)
     tensor([[100., 200.]])
     """
@@ -1954,9 +1977,9 @@ def apply_points(transform: Tensor, points: Tensor) -> Tensor:
 
     Parameters
     ----------
-    transform: Tensor[*, D+1, D+1]
+    transform: Tensor[..., D+1, D+1]
         Transformation matrix.
-    points: Tensor[*, N, D]
+    points: Tensor[..., N, D]
         Points to transform.
 
     Returns
@@ -1973,11 +1996,14 @@ def apply_points(transform: Tensor, points: Tensor) -> Tensor:
     tensor([[1., 2., 3.]])
     """
 
-    *shape, _, _ = points.shape
-
+    batch_size = points.shape[:-2]
+    # Accept variable number of dimensions. This reshape operation combines
+    # both unsqueezing (in case of no batch) and flattening (in case of multiple
+    # leading dimensions).
     points = points.reshape(-1, points.shape[-2], points.shape[-1])
-
     transform = transform.reshape(-1, transform.shape[-2], transform.shape[-1])
+
+    # Repeat the transform matrix (which may be unit) to match the number of points
     transform = torch.repeat_interleave(
         transform, repeats=points.shape[0] // transform.shape[0], dim=0
     )
@@ -1987,9 +2013,7 @@ def apply_points(transform: Tensor, points: Tensor) -> Tensor:
     result_homo = torch.bmm(points_homo, transform.permute(0, 2, 1))
     result_homo = torch.squeeze(result_homo, dim=-1)
     result = homogeneous_to_euclidean_points(result_homo)
-
-    shape.extend(result.shape[-2:])
-    return result.reshape(shape)
+    return result.unflatten(0, batch_size)
 
 
 #######################
@@ -2073,14 +2097,55 @@ def generate_fovmap(
 
     return res.reshape(*batch_shape, height, width, 4)
 
+@torch.no_grad()
+def generate_directions_on_grid(
+    transform: Tensor,
+    coords: Tensor,
+    *,
+    normalize: bool = True,
+    flatten: bool = True,
+) -> Tensor:
+    r"""
+    Generate directions for each pixel in the grid.
+
+    Parameters
+    ----------
+    transform: Tensor
+        Transformation matrix. Shape (B, 4, 4).
+    grid: Tensor
+        Grid of pixel coordinates. Shape (H, W, 2).
+    normalize: bool
+        Whether to normalize the directions.
+    flatten: bool
+        Whether to flatten the output tensor.
+
+    Returns
+    -------
+    Tensor
+        Directions for each pixel.
+    """
+    canvas_size = coords.shape[:-1]
+
+    coords = coords.flatten(0, 1)  # (H*W, 2)
+    coords = euclidean_to_homogeneous_points(coords)  # (H*W, 3)
+    coords = coords.repeat(transform.shape[0], 1, 1)  # (B, H*W, 3)
+
+    proj = unsafe_inverse(transform)  # (B, 4, 4)
+    dirs = apply_points(proj, coords)  # (B, H*W, 3)
+    if normalize:
+        dirs = nn.functional.normalize(dirs.mT, dim=-2).mT
+    return dirs if flatten else dirs.unflatten(-2, canvas_size)
 
 @torch.no_grad()
 def generate_directions(
     transform: Tensor,
     canvas_size: tuple[int, int],
-    noise: bool = False,
+    *,
+    grid_mode: GridMode | str = GridMode.PIXEL_CENTER,
     normalize: bool = True,
     flatten: bool = True,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
 ) -> Tensor:
     r"""
     Generate directions for each pixel in the canvas.
@@ -2091,8 +2156,8 @@ def generate_directions(
         Transformation matrix.
     canvas_size: tuple[int, int]
         Size of the canvas.
-    noise: bool
-        Whether to add noise to the coordinates.
+    grid_mode: GridMode
+        Grid generator mode. By default pixel center.
     normalize: bool
         Whether to normalize the directions.
     flatten: bool
@@ -2111,23 +2176,26 @@ def generate_directions(
     >>> print(directions.shape)
     torch.Size([10000, 3])
     """
-    coords = generate_coord_grid(
-        canvas_size,
-        device=transform.device,
-        dtype=transform.dtype,
-        mode=GridMode.PIXEL_NOISE if noise else GridMode.PIXEL_CENTER,
-    )  # (H, W, 2)
-    coords = coords.flatten(0, 1)  # (H*W, 2)
-    coords = euclidean_to_homogeneous_points(coords)  # (H*W, 3)
-    coords = coords.repeat(*transform.shape[:-2], 1, 1)  # (B, H*W, 3)
 
-    proj = unsafe_inverse(transform)  # (B, 4, 4)
-    dirs = apply_points(proj, coords)  # (B, H*W, 3)
-    if normalize:
-        dirs = nn.functional.normalize(dirs.mT, dim=-2).mT
-    if not flatten:
-        dirs = dirs.unflatten(-2, canvas_size)
-    return dirs
+    # Generate the coordinate grid (H, W, 2)
+    if device is None and dtype is None:
+        coords = generate_coord_grid_as(transform, canvas_size, mode=grid_mode)
+    else:
+        if device is None:
+            device = transform.device
+        if dtype is None:
+            dtype = transform.dtype
+        coords = generate_coord_grid(
+            canvas_size,
+            device=device,
+            dtype=dtype,
+            mode=grid_mode,
+        )
+
+    # Generate the directions for each pixel on the grid
+    return generate_directions_on_grid(
+        transform, coords, normalize=normalize, flatten=flatten
+    )
 
 
 def directions_to_angles(dirs: Tensor) -> Tensor:
@@ -2179,13 +2247,6 @@ def spherical_zbuffer_to_euclidean(spherical_tensor: Tensor) -> Tensor:
     """
     theta, phi, z = spherical_tensor.unbind(-1)  # polar, azim, depth
 
-    # y = r * cos(phi)
-    # x = r * sin(phi) * sin(theta)
-    # z = r * sin(phi) * cos(theta)
-    # =>
-    # r = z / sin(phi) / cos(theta)
-    # y = z / (sin(phi) / cos(phi)) / cos(theta)
-    # x = z * sin(theta) / cos(theta)
     x = z * torch.tan(theta)
     y = z / torch.tan(phi) / torch.cos(theta)
 
@@ -2249,12 +2310,9 @@ def euclidean_to_spherical(spherical_tensor: Tensor) -> Tensor:
     >>> print(spherical_tensor)
     tensor([[1.5708, 1.5708, 1.0000]])
     """
-    x = spherical_tensor[..., 0]  # Extract polar angle
-    y = spherical_tensor[..., 1]  # Extract azimuthal angle
-    z = spherical_tensor[..., 2]  # Extract radius
-    # y = r * cos(phi)
-    # x = r * sin(phi) * sin(theta)
-    # z = r * sin(phi) * cos(theta)
+    x = spherical_tensor[..., 0]  # polar angle
+    y = spherical_tensor[..., 1]  # azimuth angle
+    z = spherical_tensor[..., 2]  # radius
     r = torch.sqrt(x**2 + y**2 + z**2)
     theta = torch.atan2(x / r, z / r)
     phi = torch.acos(y / r)

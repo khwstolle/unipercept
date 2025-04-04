@@ -307,7 +307,7 @@ class _SingleProcessHandler(HandlerProtocol):
         self.process_index = self.process_index_local = 0
         self.process_count = 1
 
-        self.logger.info(f"Using single-process state handler: {self}")
+        self.logger.info("Using single-process state handler.")
 
     @TX.override
     def auto_gather(

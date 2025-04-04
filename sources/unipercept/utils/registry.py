@@ -9,7 +9,15 @@ from typing import Any, Final, override
 __all__ = ["IndexedRegistry", "AnonymousRegistry"]
 
 
-class IndexedRegistry[_T, _I]:
+class RegistryValueCheckError(Exception):
+    pass
+
+
+class RegistryIndexExistsError(Exception):
+    pass
+
+
+class IndexedRegistry[_T, _I: str]:
     __slots__ = ("_memory", "_infer_fn", "_check_fn", "_exist_ok")
 
     _memory: Final[OrderedDict[str, _T]]
@@ -38,7 +46,7 @@ class IndexedRegistry[_T, _I]:
             valid = self._check_fn(obj)
             if not valid and raises:
                 msg = f"Object {obj} is not valid (check failed)."
-                raise ValueError(msg)
+                raise RegistryValueCheckError(msg)
             return valid
         return True
 
@@ -48,7 +56,7 @@ class IndexedRegistry[_T, _I]:
         if isinstance(obj, str):
             return obj
         msg = f"Cannot infer ID for object {obj} ({type(obj)})."
-        raise ValueError(msg)
+        raise KeyError(msg)
 
     def keys(self):
         return self._memory.keys()
@@ -59,11 +67,11 @@ class IndexedRegistry[_T, _I]:
     def items(self):
         return self._memory.items()
 
-    def register(self, key: str, /) -> Callable[[_T], _T]:
+    def register(self, key: str, /, **kwargs) -> Callable[[_T], _T]:  # type: ignore[no-untyped-def]
         key = self.infer_key(key)
 
         def decorator(value: _T) -> _T:
-            self[key] = value
+            self.__setitem__(key, value, **kwargs)  # type: ignore[no-untyped-call]
             return value
 
         return decorator
@@ -71,8 +79,16 @@ class IndexedRegistry[_T, _I]:
     def __getitem__(self, __key: str, /) -> _T:
         return self._memory[self.infer_key(__key)]
 
-    def __setitem__(self, __key: str, value: _T, /) -> None:
-        self._memory[self.infer_key(__key)] = value
+    def __setitem__(self, __key: str, value: _T, /, skip_check: bool = False) -> None:
+        if not skip_check:
+            self.check(value, raises=True)
+
+        key = self.infer_key(__key)
+        if key in self._memory and not self._exist_ok:
+            msg = f"Object {value} already exists in the registry."
+            raise RegistryIndexExistsError(msg)
+
+        self._memory[key] = value
 
     def __delitem__(self, __key: str, /) -> None:
         del self._memory[self.infer_key(__key)]
@@ -122,7 +138,7 @@ class AnonymousRegistry[_T]:
             valid = self._check_fn(item)
             if not valid and raises:
                 msg = f"Item {item} is not valid (check failed)."
-                raise ValueError(msg)
+                raise RegistryValueCheckError(msg)
             return valid
         return True
 
@@ -140,21 +156,22 @@ class AnonymousRegistry[_T]:
                 return
             if not self._exist_ok:
                 msg = f"Item {item} already exists in the registry."
-                raise ValueError(msg)
+                raise RegistryIndexExistsError(msg)
 
         self._collection.add(item)
 
-    def register[_I: _T](
+    def register(
         self,
         /,
         *,
         skip_exist: bool = False,
         skip_check: bool = False,
-    ) -> Callable[[_I], _I]:
+    ) -> Callable[[_T], _T]:
         r"""
         Decorator to register an item, see :meth:`add`.
         """
-        def decorator(item: _I) -> _I:
+
+        def decorator(item: _T) -> _T:
             self.add(item, skip_exist=skip_exist, skip_check=skip_check)
             return item
 

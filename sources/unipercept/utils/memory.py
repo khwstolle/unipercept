@@ -60,6 +60,8 @@ def retry_if_cuda_oom[_C: T.Callable](
 
     @functools.wraps(__fn)
     def fn_with_retry(*args, **kwargs):
+        if torch.compiler.is_compiling():
+            return __fn(*args, **kwargs)
         with ignore_cuda_oom():
             return __fn(*args, **kwargs)
         torch.cuda.empty_cache()

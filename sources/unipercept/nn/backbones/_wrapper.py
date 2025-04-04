@@ -264,7 +264,7 @@ def _shape_to_info(
     assert c > 0, c
     assert stride > 0, shape
 
-    return BackboneFeatureInfo(channels=c, stride=stride)
+    return {"channels":c, "stride":stride}
 
 
 # ------------------- #

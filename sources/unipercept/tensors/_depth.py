@@ -5,16 +5,18 @@ Depth tensors
 Provides support for depth tensors, e.g. disparity maps, depth maps, etc.
 """
 
-import io
 import enum as E
+import functools
+import io
 import json
 import typing as T
 
+import expath
+import numpy as np
 import PIL.Image as pil_image
 import safetensors.torch as safetensors
-import torchvision.io
 import torch
-import expath
+import torchvision.io
 from einops import rearrange
 from tensordict import MemoryMappedTensor
 from torch.nn.functional import interpolate
@@ -32,10 +34,10 @@ __all__ = [
     "DepthTensor",
     "DepthMode",
     "DepthFormat",
-    "load_depth",
+    "load_depthmap",
     "save_depthmap",
-    "downsample_depth",
-    "resize_depth",
+    "downsample_depthmap",
+    "resize_depthmap",
     "absolute_to_normalized_depth",
     "normalized_to_absolute_depth",
 ]
@@ -95,6 +97,7 @@ class DepthTensor(Mask):
         return cls(torch.zeros(shape, device=device, dtype=torch.float32))  # type: ignore
 
 
+@torch.no_grad()
 def save_depthmap(
     data: Tensor, path: Pathable, format: DepthFormat | str | None = None
 ) -> None:
@@ -144,13 +147,12 @@ def save_depthmap(
             raise NotImplementedError(msg)
 
 
-def load_depth(
+@torch.no_grad()
+def load_depthmap(
     input: expath.PathType | Tensor,
     dtype: torch.dtype = DEFAULT_DEPTH_DTYPE,
     **meta_kwds: T.Any,
 ) -> DepthTensor:
-    import numpy as np
-
     if not isinstance(input, torch.Tensor):
         input = str(expath.locate(input))
     # Switch by depth format
@@ -158,36 +160,39 @@ def load_depth(
     match DepthFormat(format):  # type: ignore
         case DepthFormat.TIFF:
             if isinstance(input, torch.Tensor):
-                with io.BytesIO(input.numpy().tobytes()) as buffer:
-                    m = pil_image.open(buffer)
+                fp_open = functools.partial(io.BytesIO, input.numpy().tobytes())
             else:
-                m = pil_image.open(expath.locate(input))
-            if m.mode != "F":
-                msg = f"Expected image format 'F'; Got {m.format!r}"
-                raise ValueError(msg)
-            m = torch.from_numpy(np.array(m, copy=True))
+                fp_open = functools.partial(expath.open, input, "rb")
+            with fp_open() as fp, pil_image.open(fp) as img:
+                assert img.mode == "F", img.mode
+                dm_np = np.array(img, copy=True)
+            dm = torch.from_numpy(dm_np)
+            assert dm.ndim == 2, dm.shape
+            assert dm.dtype == torch.float32, dm.dtype
+            dm = dm.unsqueeze(0)
         case DepthFormat.DEPTH_INT16:
             if not isinstance(input, torch.Tensor):
                 input = str(expath.locate(input))
-            m = torchvision.io.read_image(
+            dm = torchvision.io.read_image(
                 input, mode=torchvision.io.ImageReadMode.UNCHANGED
             )
-            assert m.dtype == torch.uint16, m.dtype
-            m = m / float(2**8)
+            assert dm.ndim == 3, dm.shape
+            assert dm.dtype == torch.uint16, dm.dtype
+            dm = dm.to(dtype=dtype) / float(2**8)
         case DepthFormat.DISPARITY_INT16:
-            m = load_depth_from_disparity(input, **meta_kwds)
+            dm = load_depthmap_from_disparitymap(input, **meta_kwds)
         case DepthFormat.SAFETENSORS:
             if isinstance(input, torch.Tensor):
                 msg = "Expected a path to a file, not a tensor."
                 raise TypeError(msg)
             input = str(expath.locate(input))
-            m = safetensors.load_file(input)["data"]
+            dm = safetensors.load_file(input)["data"]
         case DepthFormat.TORCH:
             if isinstance(input, torch.Tensor):
                 msg = "Expected a path to a file, not a tensor."
                 raise TypeError(msg)
             input = str(expath.locate(input))
-            m = torch.load(input, map_location="cpu").squeeze_(0).squeeze_(0)
+            dm = torch.load(input, map_location="cpu")
         case DepthFormat.MEMMAP:
             if isinstance(input, torch.Tensor):
                 msg = "Expected a path to a file, not a tensor."
@@ -198,7 +203,7 @@ def load_depth(
             with path_meta.open("r") as f:
                 meta = json.load(f)[tensor_name]
 
-            m = MemoryMappedTensor.from_filename(
+            dm = MemoryMappedTensor.from_filename(
                 filename=input,
                 dtype=locate_object(meta["dtype"]),
                 shape=torch.Size(meta["shape"]),
@@ -208,18 +213,20 @@ def load_depth(
             raise NotImplementedError(msg)
 
     # TODO: Add angular FOV compensation via metadata
-    m = m.to(dtype=dtype)
-    m[m == torch.inf] = 0.0
-    m[m == torch.nan] = 0.0
-    m.squeeze_()
-    if m.ndim > 2:
-        msg = f"Depth map has {m.ndim} dimensions, expected 2"
+    dm = dm.to(dtype=dtype)
+    dm[dm == torch.inf] = 0.0
+    dm[dm == torch.nan] = 0.0
+    if dm.ndim != 3:
+        msg = (
+            f"Depth map has {dm.ndim} dimensions, expected  3 (CHW or HWC format). "
+            f"Got {dm.shape} instead."
+        )
         raise ValueError(msg)
 
-    return T.cast(DepthTensor, m.as_subclass(DepthTensor))
+    return dm.as_subclass(DepthTensor)
 
 
-def load_depth_from_disparity(
+def load_depthmap_from_disparitymap(
     path: str,
     camera_baseline: float,
     camera_fx: float,
@@ -254,7 +261,7 @@ class DepthDownsampleMethod(E.StrEnum):
     NEAREST = E.auto()
 
 
-def downsample_depth(
+def downsample_depthmap(
     depth_map: Tensor,
     size: tuple[int, int] | torch.Size,
     method: DepthDownsampleMethod | str = DepthDownsampleMethod.MEDIAN,
@@ -306,7 +313,7 @@ def downsample_depth(
 
 
 @register_kernel(functional="resize", tv_tensor_cls=DepthTensor)
-def resize_depth(
+def resize_depthmap(
     image: DepthTensor,
     size: list[int],
     interpolation: T.Any = None,  # noqa: U100
@@ -321,7 +328,7 @@ def resize_depth(
     )
 
     if h_new <= h_old and w_new <= w_old:
-        res = downsample_depth(image, (h_new, w_new))
+        res = downsample_depthmap(image, (h_new, w_new))
     else:
         res = interpolate_depth(image, (h_new, w_new))
 

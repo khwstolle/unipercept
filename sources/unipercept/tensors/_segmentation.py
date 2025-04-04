@@ -7,14 +7,14 @@ Implements mask tensors for semantic and instance segmentation maps, and their
 """
 
 import enum as E
-import torchvision.io
 import typing as T
 
 import expath
 import PIL.Image as pil_image
 import safetensors.torch as safetensors
 import torch
-from typing_extensions import deprecated
+import torchvision.io
+
 from unipercept.data.types.coco import COCOResultPanopticSegment
 from unipercept.tensors.helpers import write_png_l16, write_png_rgb
 from unipercept.tensors.registry import pixel_maps
@@ -227,7 +227,9 @@ class PanopticTensor(MaskTensor):
             mask = torch.where((ins_ids > 0) & (self != PanopticTensor.IGNORE), self, 0)
         else:
             mask = torch.where(self != PanopticTensor.IGNORE, ins_ids, 0)
-        return mask.as_subclass(MaskTensor)
+        if not torch.compiler.is_compiling():
+            mask = mask.as_subclass(MaskTensor)
+        return mask
 
     def get_instance_masks(self: Tensor) -> T.Iterator[tuple[int, MaskTensor]]:
         """Return a list of masks, one for each instance."""
@@ -473,7 +475,7 @@ PanopticTensorLike: T.TypeAlias = PanopticTensor | Tensor
 
 def load_panoptic(input: expath.PathType | Tensor, /, **meta_kwds) -> PanopticTensor:
     """Read a panoptic map from a file."""
-    from .helpers import get_kwd, read_pixels
+    from .helpers import get_kwd
 
     data_format = get_kwd(meta_kwds, "format", PanopticFormat)
 
@@ -499,7 +501,7 @@ def load_panoptic(input: expath.PathType | Tensor, /, **meta_kwds) -> PanopticTe
             if not isinstance(input, torch.Tensor):
                 input = str(expath.locate(input))
             img = torchvision.io.decode_image(
-                input, mode=torchvision.io.ImageReadMode.RGB
+                input, mode=torchvision.io.ImageReadMode.UNCHANGED
             )
             assert img.ndim == 3, f"Expected 3D tensor, got {img.ndim}D tensor"
 
@@ -519,10 +521,15 @@ def load_panoptic(input: expath.PathType | Tensor, /, **meta_kwds) -> PanopticTe
             if not isinstance(input, torch.Tensor):
                 input = str(expath.locate(input))
             img = torchvision.io.decode_image(
-                input, mode=torchvision.io.ImageReadMode.GRAY
+                input, mode=torchvision.io.ImageReadMode.UNCHANGED
             )
-            assert img.ndim == 2, f"Expected 2D tensor, got {img.ndim}D tensor"
+            assert img.dtype == torch.uint16
+            assert img.ndim == 3, (
+                f"Expected 3D tensor, got {img.ndim}D tensor {img.shape}"
+            )
 
+            # Convert to `int` while torch support for `uint16` is not available
+            img = img.int()
             has_instance = img >= divisor
 
             ids = torch.where(has_instance, (img % divisor) + 1, 0)
@@ -537,10 +544,14 @@ def load_panoptic(input: expath.PathType | Tensor, /, **meta_kwds) -> PanopticTe
             if not isinstance(input, torch.Tensor):
                 input = str(expath.locate(input))
             img = torchvision.io.decode_image(
-                input, mode=torchvision.io.ImageReadMode.GRAY
+                input, mode=torchvision.io.ImageReadMode.UNCHANGED
             )
-            assert img.ndim == 2, f"Expected 2D tensor, got {img.ndim}D tensor"
+            assert img.ndim == 3, (
+                f"Expected 3D tensor, got {img.ndim}D tensor {img.shape}"
+            )
 
+            # Convert to `int` while torch support for `uint16` is not available
+            img = img.int()
             has_instance = img >= divisor
 
             ids = (img % divisor) + 1
@@ -552,7 +563,7 @@ def load_panoptic(input: expath.PathType | Tensor, /, **meta_kwds) -> PanopticTe
             if not isinstance(input, torch.Tensor):
                 input = str(expath.locate(input))
             img = torchvision.io.decode_image(
-                input, mode=torchvision.io.ImageReadMode.RGB
+                input, mode=torchvision.io.ImageReadMode.UNCHANGED
             )
             assert img.ndim == 3, f"Expected 3D tensor, got {img.ndim}D tensor"
 
@@ -569,7 +580,7 @@ def load_panoptic(input: expath.PathType | Tensor, /, **meta_kwds) -> PanopticTe
             if not isinstance(input, torch.Tensor):
                 input = str(expath.locate(input))
             img = torchvision.io.decode_image(
-                input, mode=torchvision.io.ImageReadMode.GRAY_ALPHA
+                input, mode=torchvision.io.ImageReadMode.UNCHANGED
             )
             assert img.ndim == 2, f"Expected 2D tensor, got {img.ndim}D tensor"
             assert img.dtype == torch.int32, img.dtype
@@ -608,17 +619,12 @@ def load_panoptic(input: expath.PathType | Tensor, /, **meta_kwds) -> PanopticTe
         case _:
             msg = f"Could not read labels from {input!r} ({data_format=})"
             raise NotImplementedError(msg)
-
-    assert labels.ndim == 2, f"Expected 2D tensor, got {labels.ndim}D tensor"
-
-    assert labels is not None, (
-        f"No labels were read from '{input}' (format: {data_format})"
-    )
+    assert labels is not None
+    assert labels.ndim == 3, f"len({tuple(labels.shape)}) != 3"
 
     if len(meta_kwds) > 0:
         raise TypeError(f"Unexpected keyword arguments: {tuple(meta_kwds.keys())}")
 
-    assert labels.ndim == 2, f"Expected 2D tensor, got {labels.ndim}D tensor"
     return labels
 
 

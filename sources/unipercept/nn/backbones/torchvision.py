@@ -29,7 +29,7 @@ from ._wrapper import (
 # Recipes for common backbones #
 # ---------------------------- #
 
-_EXTRACTION_NODES: OrderedDict[re.Pattern, re.Pattern | list[str]] = OrderedDict()
+_EXTRACTION_NODES: OrderedDict[re.Pattern[str], re.Pattern[str] | list[str]] = OrderedDict()
 _EXTRACTION_NODES.update(
     # Common defaults
     {

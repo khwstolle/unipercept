@@ -108,7 +108,7 @@ class Engine:
     _params: EngineParams
     _state: State
     _xlr: Accelerator | None
-    _root: expath.PathType| None
+    _root: expath.PathType | None
     _config: dict[str, typing.Any] | None
     _stages: list[TrainingStage]
     _evaluators: dict[str, EvaluationSuite]
@@ -254,9 +254,12 @@ class Engine:
         Returns the local path to the root directory of this engine as a ``pathlib.Path`` class.
         """
         if self._root is None:
-            self._root = expath.locate(
-                f"//unipercept/output/{self._params.project_name}/{str(self.session_id)}"
+            self._root = (
+                expath.locate("//unipercept/output")
+                / self._params.project_name
+                / self.session_id
             )
+            logger.info(f"Creating session directory at {self._root}")
             self.xlr  # Force initialization of Accelerator
         return self._root
 
@@ -350,7 +353,7 @@ class Engine:
     def recover(
         self,
         model: nn.Module | None = None,
-        checkpoint: str | expath.PathType| None = None,
+        checkpoint: str | expath.PathType | None = None,
     ) -> None:
         """
         Recover a model's state and the engine's state from the given checkpoint. The model is prepared in
@@ -1135,20 +1138,6 @@ class Engine:
 
         return typing.cast(TensorDictBase, preds)
 
-    @status.assert_status(
-        ~(EngineStatus.IS_TRAINING_RUN | EngineStatus.IS_EVALUATION_RUN)
-    )
-    @status(EngineStatus.IS_PREDICTION_RUN)
-    @torch.no_grad()
-    def predict(
-        self,
-        model: nn.Module,
-        data: torch.utils.data.DataLoader | typing.Iterable[InputData],
-        *,
-        prefix: str = "pred",
-    ) -> TensorDict:
-        raise NotImplementedError("TODO: Implement prediction")
-
     # @torch.inference_mode()  # DDP issues!
     def run_evaluation_suite(
         self,
@@ -1299,6 +1288,7 @@ class Engine:
         # The writer saves results at each step, synchronizes the results across
         # all processes, and then allows the evaluators to read them
         results_mem = self._data_writer(
+            max_threads=10, # TODO pick safe default
             path=str(path_memory),
             total_size=samples_total,
             local_size=samples_local,
@@ -1326,6 +1316,7 @@ class Engine:
                         outputs = self.run_inference_step(
                             model, inputs, optimizer, timings=model_timings
                         )
+                        outputs = outputs.cpu()  # TODO
                     with profile(timings, "event"):
                         self._edge(
                             Event.ON_INFERENCE_STEP,
@@ -1387,7 +1378,6 @@ class Engine:
             try:
                 evaluator_result = hdl.compute(
                     reader,
-                    # device=torch.device("cpu"),
                     device=self.xlr.device,
                     path=path_evaluators,
                 )
@@ -1816,13 +1806,9 @@ def _forward(model: nn.Module, args: tuple[typing.Any, ...]) -> ModelOutput:
         return out
     if isinstance(out, tuple):
         return ModelOutput(*out)
-    if isinstance(out, typing.Mapping):
-        assert "results" in out or "losses" in out, (
-            f"Expected 'results' or 'losses' in {out.keys()}"
-        )
-        return ModelOutput(results=out.get("results"), losses=out.get("losses"))
-    msg = f"Expected model to return a ModelOutput, got {type(out)}"
-    raise TypeError(msg)
+    if model.training:
+        return ModelOutput(results=None, losses=out)
+    return ModelOutput(results=out, losses=None)
 
 
 def _flops(model: nn.Module, inputs: InputType) -> int:

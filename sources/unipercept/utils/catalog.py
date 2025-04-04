@@ -35,8 +35,8 @@ class Catalog[_D_co, _I_co]:
         id_pattern: re.Pattern[str] = _DEFAULT_ID_PATTERN,
         variant_separator: str = _DEFAULT_ID_SEPARATOR,
         require_info: bool = True,
-        data_abc: type[_D_co] = object,
-        info_abc: type[_I_co] = object,
+        data_abc: type[_D_co] | None = None,
+        info_abc: type[_I_co] | None = None,
     ):
         """
         Parameters
@@ -53,13 +53,15 @@ class Catalog[_D_co, _I_co]:
         self._info_registry = T.cast(
             IndexedRegistry[T.Callable[..., _I_co], str],
             IndexedRegistry(
-                infer_key=self.parse_key, check=partial(issubclass, info_abc)
+                infer_key=self.parse_key,
+                check=partial(issubclass, info_abc) if info_abc is not None else None,
             ),
         )
         self._data_registry = T.cast(
             IndexedRegistry[type[_D_co], str],
             IndexedRegistry(
-                infer_key=self.parse_key, check=partial(issubclass, data_abc)
+                infer_key=self.parse_key,
+                check=partial(issubclass, data_abc) if data_abc is not None else None,
             ),
         )
 

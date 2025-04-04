@@ -3,17 +3,18 @@ r"""
 """
 
 import math
+import typing
 
 import torch
-import typing_extensions as TX
-from einops import einsum
+import torch.fx
 from torch import Tensor, nn
 
 
+@torch.fx.wrap  # type: ignore[return-type]
 def position_meshgrid(
     patch_embeds_list: list[torch.Tensor],
 ) -> torch.Tensor:
-    positions = torch.cat(
+    return torch.cat(
         [
             torch.stack(
                 torch.meshgrid(
@@ -26,7 +27,6 @@ def position_meshgrid(
             for p in patch_embeds_list
         ]
     )
-    return positions
 
 
 class TrigonometricEmbedBase(nn.Module):
@@ -58,6 +58,7 @@ class TrigonometricEmbedBase(nn.Module):
         self.register_buffer("dim_t", dim_t, persistent=False)
 
 
+@torch.fx.wrap  # type: ignore[return-type]
 @torch.no_grad()
 def trigonometric_embed_2d(
     x_embed: Tensor,
@@ -108,7 +109,7 @@ class TrigonometricEmbed2d(TrigonometricEmbedBase):
         self.register_buffer("y_embed", y_embed, persistent=False)
         self.register_buffer("x_embed", x_embed, persistent=False)
 
-    @TX.override
+    @typing.override
     @torch.no_grad()
     def forward(self, x: Tensor) -> Tensor:
         B, _, H, W = x.shape
@@ -129,7 +130,7 @@ class MaskedTrigonometricEmbed2d(TrigonometricEmbedBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    @TX.override
+    @typing.override
     def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
         if mask is None:
             mask = torch.zeros(
@@ -144,7 +145,7 @@ class MaskedTrigonometricEmbed2d(TrigonometricEmbedBase):
         )
         return pe_2d.expand((x.size(0), -1, -1, -1))
 
-
+@torch.fx.wrap  # type: ignore[return-type]
 @torch.no_grad()
 def trigonometric_embed_3d(
     x: Tensor,
@@ -202,13 +203,14 @@ class TrigonometricEmbed3d(TrigonometricEmbedBase):
     Trigonometric positional embedding for 3D/2+1D inputs.
     """
 
-    @TX.override
+    @typing.override
     def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
         return trigonometric_embed_3d(
             x, mask, self.num_pos_feats, self.temperature, self.normalize, self.scale
         )
 
 
+@torch.fx.wrap  # type: ignore[return-type]
 @torch.no_grad()
 def trigonometric_embed_time(
     x: Tensor,
@@ -251,13 +253,14 @@ class TrigonometricEmbedTime(nn.Module):
     Trigonometric positional embedding for time-oriented inputs.
     """
 
-    @TX.override
+    @typing.override
     def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
         return trigonometric_embed_time(
             x, mask, self.num_pos_feats, self.temperature, self.normalize, self.scale
         )
 
 
+@torch.fx.wrap  # type: ignore[return-type]
 @torch.no_grad()
 def fourier_embed_2d(
     x: Tensor,
@@ -287,7 +290,7 @@ def fourier_embed_2d(
     else:
         s = torch.linspace(1.0, max_freq / 2, num_bands, device=device, dtype=dtype)
     s = s * torch.pi
-    x = einsum(x, s, "b c h w, s -> b c s h w").reshape(B, -1, H, W)
+    x = torch.einsum(x, s, "b c h w, s -> b c s h w").reshape(B, -1, H, W)
     if use_cos:
         x = torch.cat([x.sin(), x.cos()], dim=1)
     else:
@@ -315,6 +318,6 @@ class FourierEmbed2d(nn.Module):
         self.use_cos = use_cos
         self.use_log = use_log
 
-    @TX.override
+    @typing.override
     def forward(self, x: Tensor, max_freq: float | None = None) -> Tensor:
         return fourier_embed_2d(x, max_freq, self.dim, self.use_cos, self.use_log)

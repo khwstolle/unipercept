@@ -6,15 +6,13 @@ import enum as E
 import typing as T
 
 import expath
-import torchvision.io
-import PIL.Image as pil_image
 import safetensors
 import torch
+import torchvision.io
 from torchvision.tv_tensors import (
     BoundingBoxes,
     BoundingBoxFormat,
 )
-from typing_extensions import deprecated
 from torchvision.tv_tensors import (
     Image as ImageTensor,
 )
@@ -24,7 +22,6 @@ from torchvision.tv_tensors import (
 
 from unipercept.types import Tensor
 
-from .helpers import read_pixels
 from .registry import pixel_maps
 
 __all__ = [

@@ -97,7 +97,7 @@ def plot_input_data(
     for b, data_single in enumerate(data.unbind(0)):
         for i, cap in enumerate(data_single.captures.unbind(0)):
             row = axs[b * n_caps + i, :]
-            row[0].set_ylabel(f"Batch {b+1} Frame {i+1}")
+            row[0].set_ylabel(f"Batch {b + 1} Frame {i + 1}")
 
             if image_options is None:
                 image_options = {}
@@ -185,7 +185,7 @@ def plot_predictions(
         axs[-1, i].set_xlabel(lbl)
 
     for i in range(nrows):
-        axs[i, 0].set_ylabel(f"Frame {i+1}")
+        axs[i, 0].set_ylabel(f"Frame {i + 1}")
 
         if image_options is None:
             image_options = {}
@@ -220,7 +220,8 @@ def plot_depth_error(
     scale: float = 1.0,
 ) -> T.Any:
     """
-    Draws the depth map as an RGB heatmap, normalized from 0 until 1 using the given ``'max_depth'`` in the ``info``
+    Draws the depth map as an RGB heatmap, normalized from 0 until 1 using the given
+    ``max_depth`` in the ``info``
     parameter, and then mapped to a color scheme generated ad-hoc and expressed as uint8.
     """
     import matplotlib.pyplot as plt
